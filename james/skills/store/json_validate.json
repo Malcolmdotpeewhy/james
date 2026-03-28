@@ -1,0 +1,36 @@
+{
+  "id": "json_validate",
+  "name": "Validate JSON",
+  "description": "Validate and pretty-print JSON data",
+  "methods": [
+    "tool_call"
+  ],
+  "steps": [
+    {
+      "action": "tool_call",
+      "target": "json_validate",
+      "kwargs": {
+        "data": "<json_string>"
+      }
+    }
+  ],
+  "preconditions": [
+    "Input string provided"
+  ],
+  "postconditions": [
+    "Validation result and formatted output"
+  ],
+  "failure_modes": [],
+  "confidence_score": 0.5,
+  "tags": [
+    "data",
+    "json",
+    "validation"
+  ],
+  "created_at": 1774693326.9148037,
+  "updated_at": 1774693326.9148037,
+  "execution_count": 0,
+  "success_count": 0,
+  "total_duration_ms": 0.0,
+  "optimization_log": []
+}

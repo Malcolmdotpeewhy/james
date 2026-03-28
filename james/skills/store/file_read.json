@@ -1,0 +1,33 @@
+{
+  "id": "file_read",
+  "name": "Read File Contents",
+  "description": "Read the contents of a text file with encoding detection",
+  "methods": [
+    "CLI"
+  ],
+  "steps": [
+    {
+      "action": "open().read()",
+      "encoding": "utf-8"
+    }
+  ],
+  "preconditions": [
+    "File exists at path"
+  ],
+  "postconditions": [
+    "Content returned as string"
+  ],
+  "failure_modes": [],
+  "confidence_score": 0.5,
+  "tags": [
+    "filesystem",
+    "read",
+    "core"
+  ],
+  "created_at": 1774684526.5061057,
+  "updated_at": 1774684526.5061057,
+  "execution_count": 0,
+  "success_count": 0,
+  "total_duration_ms": 0.0,
+  "optimization_log": []
+}

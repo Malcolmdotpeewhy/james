@@ -1,0 +1,40 @@
+{
+  "id": "http_post",
+  "name": "HTTP POST Request",
+  "description": "Make an HTTP POST request with JSON body",
+  "methods": [
+    "API",
+    "tool_call"
+  ],
+  "steps": [
+    {
+      "action": "tool_call",
+      "target": "http_post",
+      "kwargs": {
+        "url": "<url>",
+        "body": {}
+      }
+    }
+  ],
+  "preconditions": [
+    "URL is valid",
+    "Network available"
+  ],
+  "postconditions": [
+    "Response status and body captured"
+  ],
+  "failure_modes": [],
+  "confidence_score": 0.5,
+  "tags": [
+    "network",
+    "http",
+    "api",
+    "web"
+  ],
+  "created_at": 1774693326.9148037,
+  "updated_at": 1774693326.9148037,
+  "execution_count": 0,
+  "success_count": 0,
+  "total_duration_ms": 0.0,
+  "optimization_log": []
+}

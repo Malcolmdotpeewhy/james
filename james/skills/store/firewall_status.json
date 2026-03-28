@@ -1,0 +1,33 @@
+{
+  "id": "firewall_status",
+  "name": "Firewall Status",
+  "description": "Check Windows Firewall status and profile settings",
+  "methods": [
+    "CLI"
+  ],
+  "steps": [
+    {
+      "action": "powershell",
+      "target": "Get-NetFirewallProfile | Select-Object Name,Enabled | ConvertTo-Json"
+    }
+  ],
+  "preconditions": [
+    "Windows OS"
+  ],
+  "postconditions": [
+    "Firewall status per profile"
+  ],
+  "failure_modes": [],
+  "confidence_score": 0.5,
+  "tags": [
+    "security",
+    "firewall",
+    "windows"
+  ],
+  "created_at": 1774693326.9148037,
+  "updated_at": 1774693326.9148037,
+  "execution_count": 0,
+  "success_count": 0,
+  "total_duration_ms": 0.0,
+  "optimization_log": []
+}

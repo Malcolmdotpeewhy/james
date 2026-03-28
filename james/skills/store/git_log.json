@@ -1,0 +1,34 @@
+{
+  "id": "git_log",
+  "name": "Git History",
+  "description": "Get recent commit history with details",
+  "methods": [
+    "CLI"
+  ],
+  "steps": [
+    {
+      "action": "command",
+      "target": "git log --oneline -20"
+    }
+  ],
+  "preconditions": [
+    "git available",
+    "Inside a git repository"
+  ],
+  "postconditions": [
+    "Commit list captured"
+  ],
+  "failure_modes": [],
+  "confidence_score": 0.5,
+  "tags": [
+    "vcs",
+    "git",
+    "history"
+  ],
+  "created_at": 1774693326.9148037,
+  "updated_at": 1774693326.9148037,
+  "execution_count": 0,
+  "success_count": 0,
+  "total_duration_ms": 0.0,
+  "optimization_log": []
+}

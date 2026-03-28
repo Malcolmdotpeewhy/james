@@ -1,0 +1,37 @@
+{
+  "id": "zip_archive",
+  "name": "Create Zip Archive",
+  "description": "Compress files/directories into a zip archive",
+  "methods": [
+    "tool_call"
+  ],
+  "steps": [
+    {
+      "action": "tool_call",
+      "target": "zip_create",
+      "kwargs": {
+        "sources": [],
+        "output": "archive.zip"
+      }
+    }
+  ],
+  "preconditions": [
+    "Source files exist"
+  ],
+  "postconditions": [
+    "Zip file created"
+  ],
+  "failure_modes": [],
+  "confidence_score": 0.5,
+  "tags": [
+    "compression",
+    "backup",
+    "archive"
+  ],
+  "created_at": 1774693326.9148037,
+  "updated_at": 1774693326.9148037,
+  "execution_count": 0,
+  "success_count": 0,
+  "total_duration_ms": 0.0,
+  "optimization_log": []
+}

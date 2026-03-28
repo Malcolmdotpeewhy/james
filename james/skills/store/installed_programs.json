@@ -1,0 +1,33 @@
+{
+  "id": "installed_programs",
+  "name": "List Installed Programs",
+  "description": "List all programs installed on the machine",
+  "methods": [
+    "tool_call"
+  ],
+  "steps": [
+    {
+      "action": "tool_call",
+      "target": "installed_programs"
+    }
+  ],
+  "preconditions": [
+    "Windows OS"
+  ],
+  "postconditions": [
+    "Program list with name, version, publisher"
+  ],
+  "failure_modes": [],
+  "confidence_score": 0.5,
+  "tags": [
+    "windows",
+    "software",
+    "inventory"
+  ],
+  "created_at": 1774693326.9148037,
+  "updated_at": 1774693326.9148037,
+  "execution_count": 0,
+  "success_count": 0,
+  "total_duration_ms": 0.0,
+  "optimization_log": []
+}

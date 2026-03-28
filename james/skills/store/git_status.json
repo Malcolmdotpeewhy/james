@@ -1,0 +1,33 @@
+{
+  "id": "git_status",
+  "name": "Git Repository Status",
+  "description": "Get the current status of a git repository",
+  "methods": [
+    "CLI"
+  ],
+  "steps": [
+    {
+      "action": "git status --porcelain"
+    }
+  ],
+  "preconditions": [
+    "git available",
+    "Inside a git repository"
+  ],
+  "postconditions": [
+    "Status output captured"
+  ],
+  "failure_modes": [],
+  "confidence_score": 0.5,
+  "tags": [
+    "vcs",
+    "git",
+    "repository"
+  ],
+  "created_at": 1774684526.5061057,
+  "updated_at": 1774684526.5061057,
+  "execution_count": 0,
+  "success_count": 0,
+  "total_duration_ms": 0.0,
+  "optimization_log": []
+}

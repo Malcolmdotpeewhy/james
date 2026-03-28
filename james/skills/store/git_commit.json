@@ -1,0 +1,38 @@
+{
+  "id": "git_commit",
+  "name": "Git Commit Changes",
+  "description": "Stage all changes and create a commit with a message",
+  "methods": [
+    "CLI"
+  ],
+  "steps": [
+    {
+      "action": "command",
+      "target": "git add -A"
+    },
+    {
+      "action": "command",
+      "target": "git commit -m \"<message>\""
+    }
+  ],
+  "preconditions": [
+    "git available",
+    "Changes to commit"
+  ],
+  "postconditions": [
+    "Commit created"
+  ],
+  "failure_modes": [],
+  "confidence_score": 0.5,
+  "tags": [
+    "vcs",
+    "git",
+    "commit"
+  ],
+  "created_at": 1774693326.9148037,
+  "updated_at": 1774693326.9148037,
+  "execution_count": 0,
+  "success_count": 0,
+  "total_duration_ms": 0.0,
+  "optimization_log": []
+}

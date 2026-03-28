@@ -1,0 +1,38 @@
+{
+  "id": "web_extract_all_links",
+  "name": "Extract Page Links",
+  "description": "Extract all links from a web page, categorized as internal vs external",
+  "methods": [
+    "tool_call"
+  ],
+  "steps": [
+    {
+      "action": "tool_call",
+      "target": "web_extract_links",
+      "kwargs": {
+        "url": "<url>"
+      }
+    }
+  ],
+  "preconditions": [
+    "Network available",
+    "Valid URL"
+  ],
+  "postconditions": [
+    "Internal and external links with text"
+  ],
+  "failure_modes": [],
+  "confidence_score": 0.5,
+  "tags": [
+    "web",
+    "links",
+    "scrape",
+    "seo"
+  ],
+  "created_at": 1774694174.9611528,
+  "updated_at": 1774694174.9611528,
+  "execution_count": 0,
+  "success_count": 0,
+  "total_duration_ms": 0.0,
+  "optimization_log": []
+}

@@ -1,0 +1,25 @@
+# Environments
+.env
+
+# Byte-compiled
+__pycache__/
+*.pyc
+*.pyo
+
+# Virtual envs
+.venv/
+env/
+venv/
+
+# IDEs
+.vscode/
+.idea/
+
+# JAMES internal state
+.james/
+james.db
+memory/vectors.db
+memory/conversations.db
+
+# Caches
+.pytest_cache/

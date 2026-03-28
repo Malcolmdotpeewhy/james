@@ -1,0 +1,33 @@
+{
+  "id": "uptime",
+  "name": "System Uptime",
+  "description": "Get system uptime and last boot time",
+  "methods": [
+    "tool_call"
+  ],
+  "steps": [
+    {
+      "action": "tool_call",
+      "target": "uptime"
+    }
+  ],
+  "preconditions": [
+    "Windows OS"
+  ],
+  "postconditions": [
+    "Last boot time and current time"
+  ],
+  "failure_modes": [],
+  "confidence_score": 0.5,
+  "tags": [
+    "system",
+    "uptime",
+    "monitoring"
+  ],
+  "created_at": 1774693326.9148037,
+  "updated_at": 1774693326.9148037,
+  "execution_count": 0,
+  "success_count": 0,
+  "total_duration_ms": 0.0,
+  "optimization_log": []
+}

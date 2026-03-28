@@ -1,0 +1,36 @@
+{
+  "id": "http_get",
+  "name": "HTTP GET Request",
+  "description": "Make an HTTP GET request and return the response",
+  "methods": [
+    "API"
+  ],
+  "steps": [
+    {
+      "action": "requests.get or urllib",
+      "timeout": 30
+    }
+  ],
+  "preconditions": [
+    "URL is valid",
+    "Network available"
+  ],
+  "postconditions": [
+    "Response status code captured",
+    "Body captured"
+  ],
+  "failure_modes": [],
+  "confidence_score": 0.5,
+  "tags": [
+    "network",
+    "http",
+    "api",
+    "core"
+  ],
+  "created_at": 1774684526.5061057,
+  "updated_at": 1774684526.5061057,
+  "execution_count": 0,
+  "success_count": 0,
+  "total_duration_ms": 0.0,
+  "optimization_log": []
+}

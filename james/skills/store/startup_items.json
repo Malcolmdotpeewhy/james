@@ -1,0 +1,34 @@
+{
+  "id": "startup_items",
+  "name": "Startup Programs",
+  "description": "List programs that run on Windows startup",
+  "methods": [
+    "tool_call"
+  ],
+  "steps": [
+    {
+      "action": "tool_call",
+      "target": "startup_items"
+    }
+  ],
+  "preconditions": [
+    "Windows OS"
+  ],
+  "postconditions": [
+    "Startup program list"
+  ],
+  "failure_modes": [],
+  "confidence_score": 0.5,
+  "tags": [
+    "windows",
+    "startup",
+    "boot",
+    "security"
+  ],
+  "created_at": 1774693326.9148037,
+  "updated_at": 1774693326.9148037,
+  "execution_count": 0,
+  "success_count": 0,
+  "total_duration_ms": 0.0,
+  "optimization_log": []
+}

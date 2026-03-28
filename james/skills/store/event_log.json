@@ -1,0 +1,38 @@
+{
+  "id": "event_log",
+  "name": "Read Event Logs",
+  "description": "Read recent Windows event log entries (System, Application, Security)",
+  "methods": [
+    "tool_call"
+  ],
+  "steps": [
+    {
+      "action": "tool_call",
+      "target": "event_log",
+      "kwargs": {
+        "log": "System",
+        "count": 20
+      }
+    }
+  ],
+  "preconditions": [
+    "Windows OS"
+  ],
+  "postconditions": [
+    "Event entries with time, type, source, message"
+  ],
+  "failure_modes": [],
+  "confidence_score": 0.5,
+  "tags": [
+    "windows",
+    "logs",
+    "diagnostic",
+    "monitoring"
+  ],
+  "created_at": 1774693326.9148037,
+  "updated_at": 1774693326.9148037,
+  "execution_count": 0,
+  "success_count": 0,
+  "total_duration_ms": 0.0,
+  "optimization_log": []
+}

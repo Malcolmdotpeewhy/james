@@ -1,0 +1,36 @@
+{
+  "id": "run_command",
+  "name": "Run Shell Command",
+  "description": "Execute a shell command via cmd.exe or PowerShell and capture output",
+  "methods": [
+    "CLI"
+  ],
+  "steps": [
+    {
+      "action": "subprocess.run",
+      "shell": true,
+      "capture_output": true
+    }
+  ],
+  "preconditions": [
+    "Valid command string provided"
+  ],
+  "postconditions": [
+    "Exit code captured",
+    "stdout/stderr captured"
+  ],
+  "failure_modes": [],
+  "confidence_score": 0.5,
+  "tags": [
+    "system",
+    "command",
+    "shell",
+    "core"
+  ],
+  "created_at": 1774684526.5061057,
+  "updated_at": 1774684526.5061057,
+  "execution_count": 0,
+  "success_count": 0,
+  "total_duration_ms": 0.0,
+  "optimization_log": []
+}

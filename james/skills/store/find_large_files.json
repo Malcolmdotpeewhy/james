@@ -1,0 +1,38 @@
+{
+  "id": "find_large_files",
+  "name": "Find Large Files",
+  "description": "Find the largest files in a directory tree for cleanup",
+  "methods": [
+    "tool_call"
+  ],
+  "steps": [
+    {
+      "action": "tool_call",
+      "target": "find_large_files",
+      "kwargs": {
+        "path": ".",
+        "count": 20
+      }
+    }
+  ],
+  "preconditions": [
+    "Valid directory path"
+  ],
+  "postconditions": [
+    "Sorted list of largest files"
+  ],
+  "failure_modes": [],
+  "confidence_score": 0.5,
+  "tags": [
+    "filesystem",
+    "disk",
+    "cleanup",
+    "monitoring"
+  ],
+  "created_at": 1774693326.9148037,
+  "updated_at": 1774693326.9148037,
+  "execution_count": 0,
+  "success_count": 0,
+  "total_duration_ms": 0.0,
+  "optimization_log": []
+}

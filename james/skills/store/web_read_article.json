@@ -1,0 +1,38 @@
+{
+  "id": "web_read_article",
+  "name": "Read Article (Reader Mode)",
+  "description": "Extract the main article content from a page, stripping ads, navigation, and sidebars \u2014 like reader mode",
+  "methods": [
+    "tool_call"
+  ],
+  "steps": [
+    {
+      "action": "tool_call",
+      "target": "web_read_article",
+      "kwargs": {
+        "url": "<url>"
+      }
+    }
+  ],
+  "preconditions": [
+    "Network available"
+  ],
+  "postconditions": [
+    "Clean article text with title, author, date"
+  ],
+  "failure_modes": [],
+  "confidence_score": 0.5,
+  "tags": [
+    "web",
+    "article",
+    "read",
+    "content",
+    "news"
+  ],
+  "created_at": 1774694174.9611528,
+  "updated_at": 1774694174.9611528,
+  "execution_count": 0,
+  "success_count": 0,
+  "total_duration_ms": 0.0,
+  "optimization_log": []
+}

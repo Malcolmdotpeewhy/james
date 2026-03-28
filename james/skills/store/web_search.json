@@ -1,0 +1,40 @@
+{
+  "id": "web_search",
+  "name": "Search the Web",
+  "description": "Search the internet using DuckDuckGo \u2014 returns titles, URLs, and snippets. No API key needed.",
+  "methods": [
+    "tool_call"
+  ],
+  "steps": [
+    {
+      "action": "tool_call",
+      "target": "web_search",
+      "kwargs": {
+        "query": "<search terms>",
+        "count": 10
+      }
+    }
+  ],
+  "preconditions": [
+    "Network available"
+  ],
+  "postconditions": [
+    "List of search results with title, URL, snippet"
+  ],
+  "failure_modes": [],
+  "confidence_score": 0.5,
+  "tags": [
+    "web",
+    "search",
+    "internet",
+    "google",
+    "research",
+    "core"
+  ],
+  "created_at": 1774694174.9611528,
+  "updated_at": 1774694174.9611528,
+  "execution_count": 0,
+  "success_count": 0,
+  "total_duration_ms": 0.0,
+  "optimization_log": []
+}

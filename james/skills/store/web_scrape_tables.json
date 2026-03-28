@@ -1,0 +1,39 @@
+{
+  "id": "web_scrape_tables",
+  "name": "Scrape Tables from Page",
+  "description": "Extract HTML tables from a web page as structured data with headers and rows",
+  "methods": [
+    "tool_call"
+  ],
+  "steps": [
+    {
+      "action": "tool_call",
+      "target": "web_extract_tables",
+      "kwargs": {
+        "url": "<url>"
+      }
+    }
+  ],
+  "preconditions": [
+    "Network available",
+    "Valid URL"
+  ],
+  "postconditions": [
+    "List of tables with headers and row data"
+  ],
+  "failure_modes": [],
+  "confidence_score": 0.5,
+  "tags": [
+    "web",
+    "scrape",
+    "table",
+    "data",
+    "extract"
+  ],
+  "created_at": 1774694174.9611528,
+  "updated_at": 1774694174.9611528,
+  "execution_count": 0,
+  "success_count": 0,
+  "total_duration_ms": 0.0,
+  "optimization_log": []
+}

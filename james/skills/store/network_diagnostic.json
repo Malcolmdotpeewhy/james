@@ -1,0 +1,33 @@
+{
+  "id": "network_diagnostic",
+  "name": "Network Diagnostics",
+  "description": "Check network interfaces, IP addresses, and internet connectivity",
+  "methods": [
+    "tool_call"
+  ],
+  "steps": [
+    {
+      "action": "tool_call",
+      "target": "network_info"
+    }
+  ],
+  "preconditions": [
+    "Windows OS"
+  ],
+  "postconditions": [
+    "Network interfaces list, local IP, internet status"
+  ],
+  "failure_modes": [],
+  "confidence_score": 0.5,
+  "tags": [
+    "network",
+    "diagnostic",
+    "connectivity"
+  ],
+  "created_at": 1774693326.9148037,
+  "updated_at": 1774693326.9148037,
+  "execution_count": 0,
+  "success_count": 0,
+  "total_duration_ms": 0.0,
+  "optimization_log": []
+}

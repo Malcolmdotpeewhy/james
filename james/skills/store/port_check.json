@@ -1,0 +1,38 @@
+{
+  "id": "port_check",
+  "name": "Port Check",
+  "description": "Check if a TCP port is open on a host",
+  "methods": [
+    "tool_call"
+  ],
+  "steps": [
+    {
+      "action": "tool_call",
+      "target": "port_check",
+      "kwargs": {
+        "host": "<host>",
+        "port": 0
+      }
+    }
+  ],
+  "preconditions": [
+    "Network available"
+  ],
+  "postconditions": [
+    "Port open/closed status"
+  ],
+  "failure_modes": [],
+  "confidence_score": 0.5,
+  "tags": [
+    "network",
+    "port",
+    "firewall",
+    "diagnostic"
+  ],
+  "created_at": 1774693326.9148037,
+  "updated_at": 1774693326.9148037,
+  "execution_count": 0,
+  "success_count": 0,
+  "total_duration_ms": 0.0,
+  "optimization_log": []
+}

@@ -1,0 +1,38 @@
+{
+  "id": "windows_services",
+  "name": "Manage Windows Services",
+  "description": "List, start, stop, or restart Windows services",
+  "methods": [
+    "tool_call",
+    "CLI"
+  ],
+  "steps": [
+    {
+      "action": "tool_call",
+      "target": "windows_services",
+      "kwargs": {
+        "status": "all"
+      }
+    }
+  ],
+  "preconditions": [
+    "Windows OS",
+    "Admin rights for start/stop"
+  ],
+  "postconditions": [
+    "Service status list"
+  ],
+  "failure_modes": [],
+  "confidence_score": 0.5,
+  "tags": [
+    "windows",
+    "service",
+    "admin"
+  ],
+  "created_at": 1774693326.9148037,
+  "updated_at": 1774693326.9148037,
+  "execution_count": 0,
+  "success_count": 0,
+  "total_duration_ms": 0.0,
+  "optimization_log": []
+}

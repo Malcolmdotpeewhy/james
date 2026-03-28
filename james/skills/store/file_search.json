@@ -1,0 +1,38 @@
+{
+  "id": "file_search",
+  "name": "Search Files",
+  "description": "Recursively search for files matching a pattern (*.log, *.py, etc)",
+  "methods": [
+    "CLI",
+    "tool_call"
+  ],
+  "steps": [
+    {
+      "action": "tool_call",
+      "target": "file_search",
+      "kwargs": {
+        "path": ".",
+        "pattern": "*"
+      }
+    }
+  ],
+  "preconditions": [
+    "Valid directory path"
+  ],
+  "postconditions": [
+    "List of matching files with sizes and dates"
+  ],
+  "failure_modes": [],
+  "confidence_score": 0.5,
+  "tags": [
+    "filesystem",
+    "search",
+    "find"
+  ],
+  "created_at": 1774693326.9148037,
+  "updated_at": 1774693326.9148037,
+  "execution_count": 0,
+  "success_count": 0,
+  "total_duration_ms": 0.0,
+  "optimization_log": []
+}

@@ -1,0 +1,39 @@
+{
+  "id": "download_file",
+  "name": "Download File from URL",
+  "description": "Download a file from the internet to a local path",
+  "methods": [
+    "tool_call"
+  ],
+  "steps": [
+    {
+      "action": "tool_call",
+      "target": "download_file",
+      "kwargs": {
+        "url": "<url>",
+        "output": "<path>"
+      }
+    }
+  ],
+  "preconditions": [
+    "URL is valid",
+    "Network available",
+    "Output path writable"
+  ],
+  "postconditions": [
+    "File downloaded to specified path"
+  ],
+  "failure_modes": [],
+  "confidence_score": 0.5,
+  "tags": [
+    "network",
+    "download",
+    "web"
+  ],
+  "created_at": 1774693326.9148037,
+  "updated_at": 1774693326.9148037,
+  "execution_count": 0,
+  "success_count": 0,
+  "total_duration_ms": 0.0,
+  "optimization_log": []
+}

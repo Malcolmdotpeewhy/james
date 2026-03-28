@@ -1,0 +1,34 @@
+{
+  "id": "npm_install",
+  "name": "Install Node.js Package",
+  "description": "Install a Node.js package via npm",
+  "methods": [
+    "CLI"
+  ],
+  "steps": [
+    {
+      "action": "command",
+      "target": "npm install <package>"
+    }
+  ],
+  "preconditions": [
+    "npm available"
+  ],
+  "postconditions": [
+    "Package in node_modules"
+  ],
+  "failure_modes": [],
+  "confidence_score": 0.5,
+  "tags": [
+    "package",
+    "node",
+    "javascript",
+    "dependency"
+  ],
+  "created_at": 1774693326.9148037,
+  "updated_at": 1774693326.9148037,
+  "execution_count": 0,
+  "success_count": 0,
+  "total_duration_ms": 0.0,
+  "optimization_log": []
+}

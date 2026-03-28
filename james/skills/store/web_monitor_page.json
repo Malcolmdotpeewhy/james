@@ -1,0 +1,38 @@
+{
+  "id": "web_monitor_page",
+  "name": "Monitor Page for Changes",
+  "description": "Check if a web page has changed since the last visit using content hashing",
+  "methods": [
+    "tool_call"
+  ],
+  "steps": [
+    {
+      "action": "tool_call",
+      "target": "web_page_diff",
+      "kwargs": {
+        "url": "<url>"
+      }
+    }
+  ],
+  "preconditions": [
+    "Network available"
+  ],
+  "postconditions": [
+    "Hash value and change status"
+  ],
+  "failure_modes": [],
+  "confidence_score": 0.5,
+  "tags": [
+    "web",
+    "monitor",
+    "diff",
+    "watch",
+    "changes"
+  ],
+  "created_at": 1774694174.9611528,
+  "updated_at": 1774694174.9611528,
+  "execution_count": 0,
+  "success_count": 0,
+  "total_duration_ms": 0.0,
+  "optimization_log": []
+}

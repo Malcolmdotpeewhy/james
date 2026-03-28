@@ -1,0 +1,33 @@
+{
+  "id": "process_list",
+  "name": "List Running Processes",
+  "description": "List all running processes or filter by name",
+  "methods": [
+    "CLI"
+  ],
+  "steps": [
+    {
+      "action": "tasklist /FO CSV /NH",
+      "parse": "csv"
+    }
+  ],
+  "preconditions": [
+    "Windows OS"
+  ],
+  "postconditions": [
+    "Process list with name, PID, memory"
+  ],
+  "failure_modes": [],
+  "confidence_score": 0.5,
+  "tags": [
+    "system",
+    "process",
+    "monitoring"
+  ],
+  "created_at": 1774684526.5061057,
+  "updated_at": 1774684526.5061057,
+  "execution_count": 0,
+  "success_count": 0,
+  "total_duration_ms": 0.0,
+  "optimization_log": []
+}

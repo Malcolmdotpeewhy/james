@@ -1,0 +1,33 @@
+{
+  "id": "file_write",
+  "name": "Write File Contents",
+  "description": "Write content to a file, creating parent directories if needed",
+  "methods": [
+    "CLI"
+  ],
+  "steps": [
+    {
+      "action": "os.makedirs + open().write()",
+      "encoding": "utf-8"
+    }
+  ],
+  "preconditions": [
+    "Target path writable"
+  ],
+  "postconditions": [
+    "File exists with expected content"
+  ],
+  "failure_modes": [],
+  "confidence_score": 0.5,
+  "tags": [
+    "filesystem",
+    "write",
+    "core"
+  ],
+  "created_at": 1774684526.5061057,
+  "updated_at": 1774684526.5061057,
+  "execution_count": 0,
+  "success_count": 0,
+  "total_duration_ms": 0.0,
+  "optimization_log": []
+}

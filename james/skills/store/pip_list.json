@@ -1,0 +1,33 @@
+{
+  "id": "pip_list",
+  "name": "List Python Packages",
+  "description": "List all installed Python packages with versions",
+  "methods": [
+    "tool_call"
+  ],
+  "steps": [
+    {
+      "action": "tool_call",
+      "target": "installed_packages"
+    }
+  ],
+  "preconditions": [
+    "pip available"
+  ],
+  "postconditions": [
+    "Package list with name and version"
+  ],
+  "failure_modes": [],
+  "confidence_score": 0.5,
+  "tags": [
+    "package",
+    "python",
+    "inspection"
+  ],
+  "created_at": 1774693326.9148037,
+  "updated_at": 1774693326.9148037,
+  "execution_count": 0,
+  "success_count": 0,
+  "total_duration_ms": 0.0,
+  "optimization_log": []
+}

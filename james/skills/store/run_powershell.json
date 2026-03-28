@@ -1,0 +1,37 @@
+{
+  "id": "run_powershell",
+  "name": "Run PowerShell Command",
+  "description": "Execute a PowerShell command with -NoProfile for isolation",
+  "methods": [
+    "CLI"
+  ],
+  "steps": [
+    {
+      "action": "subprocess.run",
+      "args": [
+        "powershell",
+        "-NoProfile",
+        "-Command"
+      ]
+    }
+  ],
+  "preconditions": [
+    "PowerShell available"
+  ],
+  "postconditions": [
+    "Output captured"
+  ],
+  "failure_modes": [],
+  "confidence_score": 0.5,
+  "tags": [
+    "system",
+    "powershell",
+    "core"
+  ],
+  "created_at": 1774684526.5061057,
+  "updated_at": 1774684526.5061057,
+  "execution_count": 0,
+  "success_count": 0,
+  "total_duration_ms": 0.0,
+  "optimization_log": []
+}

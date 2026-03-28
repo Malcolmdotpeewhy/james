@@ -1,0 +1,37 @@
+{
+  "id": "system_info",
+  "name": "System Information",
+  "description": "Get comprehensive system info: OS, CPU cores, RAM, GPU, hostname, Python version",
+  "methods": [
+    "tool_call"
+  ],
+  "steps": [
+    {
+      "action": "tool_call",
+      "target": "system_info",
+      "kwargs": {
+        "detail": "full"
+      }
+    }
+  ],
+  "preconditions": [
+    "Windows OS"
+  ],
+  "postconditions": [
+    "System info dict with CPU, RAM, GPU, OS details"
+  ],
+  "failure_modes": [],
+  "confidence_score": 0.5,
+  "tags": [
+    "system",
+    "monitoring",
+    "hardware",
+    "core"
+  ],
+  "created_at": 1774693326.9148037,
+  "updated_at": 1774693326.9148037,
+  "execution_count": 0,
+  "success_count": 0,
+  "total_duration_ms": 0.0,
+  "optimization_log": []
+}

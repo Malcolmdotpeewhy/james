@@ -1,0 +1,34 @@
+{
+  "id": "check_open_ports",
+  "name": "Scan Open Ports",
+  "description": "Check which common ports are open on a host",
+  "methods": [
+    "CLI"
+  ],
+  "steps": [
+    {
+      "action": "powershell",
+      "target": "1..1024 | ForEach-Object { $p=$_; try { $c=New-Object System.Net.Sockets.TcpClient; $c.Connect('localhost',$p); \"Port $p OPEN\"; $c.Close() } catch {} }"
+    }
+  ],
+  "preconditions": [
+    "Network available"
+  ],
+  "postconditions": [
+    "List of open ports"
+  ],
+  "failure_modes": [],
+  "confidence_score": 0.5,
+  "tags": [
+    "security",
+    "network",
+    "ports",
+    "scan"
+  ],
+  "created_at": 1774693326.9148037,
+  "updated_at": 1774693326.9148037,
+  "execution_count": 0,
+  "success_count": 0,
+  "total_duration_ms": 0.0,
+  "optimization_log": []
+}

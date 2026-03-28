@@ -1,0 +1,39 @@
+{
+  "id": "web_crawl_site",
+  "name": "Crawl Website",
+  "description": "Crawl a website following links up to a depth limit, collecting page titles and word counts",
+  "methods": [
+    "tool_call"
+  ],
+  "steps": [
+    {
+      "action": "tool_call",
+      "target": "web_crawl",
+      "kwargs": {
+        "start_url": "<url>",
+        "max_pages": 10,
+        "depth": 2
+      }
+    }
+  ],
+  "preconditions": [
+    "Network available"
+  ],
+  "postconditions": [
+    "List of crawled pages with metadata"
+  ],
+  "failure_modes": [],
+  "confidence_score": 0.5,
+  "tags": [
+    "web",
+    "crawl",
+    "spider",
+    "sitemap"
+  ],
+  "created_at": 1774694174.9611528,
+  "updated_at": 1774694174.9611528,
+  "execution_count": 0,
+  "success_count": 0,
+  "total_duration_ms": 0.0,
+  "optimization_log": []
+}

@@ -1,0 +1,40 @@
+{
+  "id": "web_browse",
+  "name": "Browse Web Page",
+  "description": "Browse a web page and extract clean readable text, links, images, and metadata. Like having a browser that returns structured data.",
+  "methods": [
+    "tool_call"
+  ],
+  "steps": [
+    {
+      "action": "tool_call",
+      "target": "web_browse",
+      "kwargs": {
+        "url": "<url>",
+        "extract": "all"
+      }
+    }
+  ],
+  "preconditions": [
+    "Network available",
+    "Valid URL"
+  ],
+  "postconditions": [
+    "Page text, title, links, images, headings extracted"
+  ],
+  "failure_modes": [],
+  "confidence_score": 0.5,
+  "tags": [
+    "web",
+    "browse",
+    "scrape",
+    "read",
+    "core"
+  ],
+  "created_at": 1774694174.9611528,
+  "updated_at": 1774694174.9611528,
+  "execution_count": 0,
+  "success_count": 0,
+  "total_duration_ms": 0.0,
+  "optimization_log": []
+}
