@@ -585,7 +585,7 @@ class Orchestrator:
         self.streamer.emit("graph_start", {"id": graph.id, "name": graph.name, "nodes": len(graph.nodes)})
         self.audit.record("graph_start", OpClass.SAFE, details=graph.name)
 
-        # Topological execution
+        # Concurrent execution of ready nodes
         try:
             graph._validate_no_cycles()
         except Exception as e:
