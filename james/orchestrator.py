@@ -26,7 +26,7 @@ from james.layers.application import ApplicationLayer
 from james.layers.ui_cognitive import UICognitiveLayer
 from james.layers.synthetic import SyntheticLayer
 from james.layers.environmental import EnvironmentalLayer
-from james.memory.store import MemoryStore
+from james.memory.store import MemoryStore, ExecutionMetric
 from james.optimizer import Optimizer
 from james.security import AuditLog, OpClass, RestorePointManager, SecurityPolicy
 from james.skills.skill import Skill, SkillStore
@@ -882,12 +882,14 @@ class Orchestrator:
 
             # Record metric
             self.memory.record_metric(
-                node_id=node.id,
-                node_name=node.name,
-                success=result.success,
-                duration_ms=result.duration_ms,
-                layer=current_layer.level.value,
-                error=result.error,
+                ExecutionMetric(
+                    node_id=node.id,
+                    success=result.success,
+                    duration_ms=result.duration_ms,
+                    node_name=node.name,
+                    layer=current_layer.level.value,
+                    error=result.error,
+                )
             )
 
             if result.success:

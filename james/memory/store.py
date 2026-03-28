@@ -14,7 +14,19 @@ import os
 import sqlite3
 import threading
 import time
+from dataclasses import dataclass
 from typing import Any, Optional
+
+
+@dataclass
+class ExecutionMetric:
+    """Encapsulates an execution metric for recording."""
+    node_id: str
+    success: bool
+    duration_ms: float
+    node_name: str = ""
+    layer: Optional[int] = None
+    error: Optional[str] = None
 
 
 class MemoryStore:
@@ -171,22 +183,22 @@ class MemoryStore:
 
     # ── Metrics Recording ────────────────────────────────────────
 
-    def record_metric(
-        self,
-        node_id: str,
-        success: bool,
-        duration_ms: float,
-        node_name: str = "",
-        layer: Optional[int] = None,
-        error: Optional[str] = None,
-    ) -> None:
+    def record_metric(self, metric: ExecutionMetric) -> None:
         """Record an execution metric."""
         with self._lock, self._connect() as conn:
             conn.execute(
                 """INSERT INTO metrics
                    (node_id, node_name, layer, success, duration_ms, error, timestamp)
                    VALUES (?, ?, ?, ?, ?, ?, ?)""",
-                (node_id, node_name, layer, int(success), duration_ms, error, time.time()),
+                (
+                    metric.node_id,
+                    metric.node_name,
+                    metric.layer,
+                    int(metric.success),
+                    metric.duration_ms,
+                    metric.error,
+                    time.time(),
+                ),
             )
 
     def get_metrics(
