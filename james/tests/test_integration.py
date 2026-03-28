@@ -70,6 +70,9 @@ class TestOrchestrator:
         assert "JAMES_TEST_OK" in str(node.result.output)
 
     def test_execute_powershell(self, orch):
+        import shutil
+        if not shutil.which("powershell") and not shutil.which("pwsh"):
+            pytest.skip("powershell not installed")
         graph = orch.run("!powershell -NoProfile -NonInteractive -Command \"Write-Output 'PowerShell OK'\"")
         assert graph.is_complete
         node = list(graph.nodes.values())[0]

@@ -157,6 +157,46 @@ class ToolSandbox:
             if pattern in code:
                 violations.append(f"Network access: {pattern}")
 
+        # Run static analysis (ruff, mypy, bandit)
+        fd, tmp_path = tempfile.mkstemp(suffix=".py", prefix="james_sa_")
+        try:
+            with os.fdopen(fd, "w") as f:
+                f.write(code)
+
+            # Ruff check
+            try:
+                result = subprocess.run([sys.executable, "-m", "ruff", "check", tmp_path], capture_output=True, text=True, timeout=10)
+                if result.returncode != 0:
+                    violations.append(f"Ruff failed: {result.stdout.strip()[:200]}")
+            except Exception as e:
+                logger.warning(f"Ruff check failed: {e}")
+
+            # Mypy check
+            try:
+                result = subprocess.run([sys.executable, "-m", "mypy", tmp_path], capture_output=True, text=True, timeout=10)
+                if result.returncode != 0:
+                    violations.append(f"Mypy failed: {result.stdout.strip()[:200]}")
+            except Exception as e:
+                logger.warning(f"Mypy check failed: {e}")
+
+            # Bandit check
+            try:
+                result = subprocess.run([sys.executable, "-m", "bandit", "-r", tmp_path, "-f", "json", "-q"], capture_output=True, text=True, timeout=10)
+                if result.returncode != 0:
+                    try:
+                        import json
+                        bandit_res = json.loads(result.stdout)
+                        for issue in bandit_res.get("results", []):
+                            if issue.get("issue_severity") in ("HIGH", "MEDIUM"):
+                                violations.append(f"Bandit ({issue.get('issue_severity')}): {issue.get('issue_text')}")
+                    except json.JSONDecodeError:
+                        violations.append(f"Bandit failed: {result.stdout.strip()[:200]}")
+            except Exception as e:
+                logger.warning(f"Bandit check failed: {e}")
+
+        finally:
+            os.unlink(tmp_path)
+
         return {
             "safe": len(violations) == 0,
             "violations": violations,
@@ -399,38 +439,83 @@ Return ONLY the valid Python code, no markdown or text wrappers. Do not wrap cod
             }
             
         # Sandbox test
+        # We also need to check static analysis
+        sa = self.sandbox.validate_code_safety(code)
+        if not sa["safe"]:
+            return {
+                "recovered": False,
+                "action": "safety_validation_failed",
+                "missing_tool": tool_name,
+                "violations": sa["violations"],
+            }
+
         test = self.sandbox.test_tool(code, f"_tool_{tool_name}", {})
         if test["success"] or "missing required positional arguments" in str(test.get("error", "")).lower():
             # If it succeeded or legitimately asked for kwargs, it's structurally valid code
             try:
-                # Define function in local scope
-                loc = {}
-                exec(code, globals(), loc)
-                fn = loc.get(f"_tool_{tool_name}")
+                # Generate plugin files
+                import time
+                plugin_name = f"self_evolved_{tool_name}"
                 
-                if fn and callable(fn):
-                    # Register dynamically into live registry
-                    self.orch.tools.register(
-                        tool_name, fn,
-                        f"Auto-generated: {gap.task[:100]}"
+                # We need james root
+                if hasattr(self.orch, "_james_dir"):
+                    plugins_dir = os.path.join(self.orch._james_dir, "plugins")
+                else:
+                    plugins_dir = os.path.join(os.path.dirname(os.path.dirname(__file__)), "plugins")
+                    
+                target_dir = os.path.join(plugins_dir, plugin_name)
+                os.makedirs(target_dir, exist_ok=True)
+
+                # Escape single quotes and use triple quotes for safety on natural language descriptions
+                safe_desc = gap.task[:100].replace('"""', '\\"\\"\\"')
+                main_code = f'{code}\n\ndef register(registry):\n    registry.register("{tool_name}", _tool_{tool_name}, """Auto-generated: {safe_desc}""")\n    return 1\n'
+
+                with open(os.path.join(target_dir, "main.py"), "w", encoding="utf-8") as f:
+                    f.write(main_code)
+                    
+                manifest = {
+                    "name": plugin_name,
+                    "version": "1.0",
+                    "description": f"Auto-generated for task: {gap.task[:100]}",
+                    "author": "JAMES Self-Evolution",
+                    "entry": "main.py",
+                    "tools": [tool_name],
+                    "dependencies": []
+                }
+
+                with open(os.path.join(target_dir, "manifest.json"), "w", encoding="utf-8") as f:
+                    json.dump(manifest, f, indent=2)
+
+                # Hot load
+                if self.orch and hasattr(self.orch, "plugins"):
+                    self.orch.plugins.discover()
+                    load_result = self.orch.plugins.load(plugin_name)
+                    if load_result.get("status") == "error":
+                        raise RuntimeError(f"Failed to load generated plugin: {load_result.get('error')}")
+                else:
+                    # Fallback dynamic registration if plugin manager isn't available
+                    loc = {}
+                    exec(code, globals(), loc)
+                    fn = loc.get(f"_tool_{tool_name}")
+                    if fn and callable(fn) and self.orch and hasattr(self.orch, "tools"):
+                        self.orch.tools.register(tool_name, fn, f"Auto-generated: {gap.task[:100]}")
+
+                # Log the expansion structurally
+                if self.memory:
+                    self.memory.lt_set(
+                        f"expansion_{tool_name}",
+                        {"code": code, "task": gap.task, "timestamp": time.time(), "plugin": plugin_name},
+                        category="evolution"
                     )
-                    
-                    # Log the expansion structurally
-                    if self.memory:
-                        import time
-                        self.memory.lt_set(
-                            f"expansion_{tool_name}",
-                            {"code": code, "task": gap.task, "timestamp": time.time()},
-                            category="evolution"
-                        )
-                    
-                    logger.info(f"Successfully registered dynamic tool '{tool_name}'")
-                    return {
-                        "recovered": True,
-                        "action": "dynamic_tool_registered",
-                        "tool": tool_name,
-                        "code": code,
-                    }
+
+                logger.info(f"Successfully registered auto-generated tool '{tool_name}' via plugin '{plugin_name}'")
+                return {
+                    "recovered": True,
+                    "action": "dynamic_tool_registered",
+                    "tool": tool_name,
+                    "code": code,
+                    "plugin": plugin_name,
+                }
                     
             except Exception as e:
                 return {
@@ -454,6 +539,48 @@ Return ONLY the valid Python code, no markdown or text wrappers. Do not wrap cod
             "message": "Missing command logged. Install the required software.",
             "gap": gap.to_dict(),
         }
+
+    # ── Tool Pruning ─────────────────────────────────────────────
+
+    def prune_tools(self, days_old: int = 30) -> dict:
+        """Remove self-evolved tools older than `days_old` days."""
+        if not self.orch or not hasattr(self.orch, "_james_dir"):
+            return {"status": "error", "message": "Orchestrator or james_dir not available"}
+
+        plugins_dir = os.path.join(self.orch._james_dir, "plugins")
+        if not os.path.exists(plugins_dir):
+            return {"status": "error", "message": "Plugins directory not found"}
+
+        cutoff = time.time() - (days_old * 86400)
+        pruned = []
+
+        try:
+            for item in os.listdir(plugins_dir):
+                if item.startswith("self_evolved_"):
+                    plugin_path = os.path.join(plugins_dir, item)
+                    if os.path.isdir(plugin_path):
+                        # Check modification time of manifest.json
+                        manifest_path = os.path.join(plugin_path, "manifest.json")
+                        if os.path.exists(manifest_path):
+                            mtime = os.path.getmtime(manifest_path)
+                            if mtime < cutoff:
+                                # Unload first if possible
+                                if hasattr(self.orch, "plugins"):
+                                    self.orch.plugins.unload(item)
+
+                                import shutil
+                                shutil.rmtree(plugin_path)
+                                pruned.append(item)
+                                logger.info(f"Pruned old self-evolved tool: {item}")
+
+            return {
+                "status": "success",
+                "pruned_count": len(pruned),
+                "pruned_plugins": pruned,
+            }
+        except Exception as e:
+            logger.error(f"Error pruning tools: {e}")
+            return {"status": "error", "message": str(e)}
 
     # ── Status & History ─────────────────────────────────────────
 
