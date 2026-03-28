@@ -47,6 +47,8 @@ class ApplicationLayer(ControlLayer):
             "cli": self._cli_invoke,
             "browser": self._browser_action,
             "lcu_api": self._lcu_api_call,
+            "command": self._cli_invoke, # Treat command as cli invoke
+            "powershell": self._cli_invoke,
         }
 
         handler = dispatch.get(action_type)

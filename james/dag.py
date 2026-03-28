@@ -39,6 +39,7 @@ class NodeResult:
     duration_ms: float = 0.0
     layer_used: Optional[str] = None
     attempts: int = 1
+    metadata: dict[str, Any] = field(default_factory=dict)
 
 
 @dataclass
