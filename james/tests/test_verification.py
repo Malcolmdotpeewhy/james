@@ -4,7 +4,7 @@ JAMES Unit Tests — Verification Engine
 import pytest
 from james.verification import (
     Condition, VerificationEngine, VerificationStatus,
-    file_exists_condition, command_available_condition,
+    file_exists_condition, directory_exists_condition, command_available_condition,
 )
 
 
@@ -105,6 +105,25 @@ class TestPrebuiltConditions:
 
     def test_file_exists_false(self, tmp_path):
         cond = file_exists_condition(str(tmp_path / "nope.txt"))
+        passed, _ = cond.evaluate()
+        assert passed is False
+
+    def test_directory_exists_true(self, tmp_path):
+        d = tmp_path / "test_dir"
+        d.mkdir()
+        cond = directory_exists_condition(str(d))
+        passed, _ = cond.evaluate()
+        assert passed is True
+
+    def test_directory_exists_false(self, tmp_path):
+        cond = directory_exists_condition(str(tmp_path / "nope_dir"))
+        passed, _ = cond.evaluate()
+        assert passed is False
+
+    def test_directory_exists_not_a_dir(self, tmp_path):
+        f = tmp_path / "test.txt"
+        f.write_text("hello")
+        cond = directory_exists_condition(str(f))
         passed, _ = cond.evaluate()
         assert passed is False
 
