@@ -78,6 +78,34 @@ class TestVerificationEngine:
         assert result.checks_total == 1
         assert result.status == VerificationStatus.PASS
 
+    def test_verify_postconditions_all_pass(self):
+        engine = VerificationEngine()
+        conditions = [
+            Condition(name="c1", check=lambda: True),
+            Condition(name="c2", check=lambda: True),
+        ]
+        result = engine.verify_postconditions(conditions)
+        assert result.status == VerificationStatus.PASS
+        assert result.checks_passed == 2
+        assert result.checks_failed == 0
+
+    def test_verify_postconditions_failure(self):
+        engine = VerificationEngine()
+        conditions = [
+            Condition(name="must_pass", check=lambda: False, required=True),
+        ]
+        result = engine.verify_postconditions(conditions)
+        assert result.status == VerificationStatus.FAIL
+
+    def test_global_postconditions(self):
+        engine = VerificationEngine()
+        engine.add_global_postcondition(
+            Condition(name="global", check=lambda: True)
+        )
+        result = engine.verify_postconditions([])
+        assert result.checks_total == 1
+        assert result.status == VerificationStatus.PASS
+
     def test_monitor_execution_success(self):
         ok, output, error, duration = VerificationEngine.monitor_execution(
             lambda: "hello"
