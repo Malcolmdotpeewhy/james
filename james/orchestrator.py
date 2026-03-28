@@ -587,15 +587,40 @@ class Orchestrator:
 
         # Topological execution
         try:
-            order = graph.topological_sort()
+            graph._validate_no_cycles()
         except Exception as e:
             logger.error(f"Graph validation failed: {e}")
             self.audit.record("graph_error", OpClass.SAFE, details=str(e))
             raise
 
-        for node_id in order:
-            node = graph.get_node(node_id)
-            self._execute_node(node, graph)
+        import concurrent.futures
+        from james.dag import NodeState
+        
+        with concurrent.futures.ThreadPoolExecutor(max_workers=10) as executor:
+            futures = set()
+            while True:
+                ready_nodes = graph.get_ready_nodes()
+                for node in ready_nodes:
+                    node.state = NodeState.RUNNING  # Prevent picking it up again
+                    future = executor.submit(self._execute_node, node, graph)
+                    futures.add(future)
+                    
+                if not futures:
+                    # No nodes are running and no nodes are ready. Deadlock or finished.
+                    break
+                    
+                done, not_done = concurrent.futures.wait(
+                    futures, return_when=concurrent.futures.FIRST_COMPLETED
+                )
+                
+                for f in done:
+                    # Retrieve any thrown exceptions to prevent silent thread crashes
+                    try:
+                        f.result()
+                    except Exception as e:
+                        logger.error(f"Node execution thread crashed: {e}")
+                
+                futures = not_done
 
         graph.completed_at = time.time()
         self.memory.st_set("active_graph", graph.to_dict())
@@ -1019,7 +1044,7 @@ class Orchestrator:
             pass
 
         return {
-            "version": "2.2.0",
+            "version": "2.3.0",
             "project_root": self._root,
             "layers": {
                 "registered": self.layers.registered_count,
