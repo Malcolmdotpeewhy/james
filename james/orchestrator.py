@@ -28,7 +28,7 @@ from james.layers.synthetic import SyntheticLayer
 from james.layers.environmental import EnvironmentalLayer
 from james.memory.store import MemoryStore
 from james.optimizer import Optimizer
-from james.security import AuditLog, OpClass, RestorePointManager, SecurityPolicy
+from james.security import AuditEntry, AuditLog, OpClass, RestorePointManager, SecurityPolicy
 from james.skills.skill import Skill, SkillStore
 from james.verification import Condition, VerificationEngine
 
@@ -347,10 +347,11 @@ class Orchestrator:
                 logger.info(
                     f"AI planned {len(plan['steps'])} steps: {result.get('reasoning', '')[:100]}"
                 )
-                self.audit.record(
-                    "ai_plan", OpClass.SAFE,
+                self.audit.record(AuditEntry(
+                    operation="ai_plan",
+                    classification=OpClass.SAFE,
                     details=f"AI decomposed into {len(plan['steps'])} steps",
-                )
+                ))
                 # Store the original description for post-execution learning
                 self.memory.st_set("_ai_task_description", description)
                 return self._plan_from_dict(plan)
@@ -525,18 +526,20 @@ class Orchestrator:
                 )
                 graph.add_node(node)
                 self._active_graph = graph
-                self.audit.record(
-                    "plan_rejected", OpClass.DANGEROUS,
+                self.audit.record(AuditEntry(
+                    operation="plan_rejected",
+                    classification=OpClass.DANGEROUS,
                     details=f"Rejected '{name}': {'; '.join(vr.errors)[:300]}",
-                )
+                ))
                 return graph
             # Apply any auto-corrections from validation
             task = vr.corrected_plan
             if vr.warnings:
-                self.audit.record(
-                    "plan_warnings", OpClass.SAFE,
+                self.audit.record(AuditEntry(
+                    operation="plan_warnings",
+                    classification=OpClass.SAFE,
                     details=f"{len(vr.warnings)} warnings: {'; '.join(vr.warnings)[:300]}",
-                )
+                ))
 
         graph = ExecutionGraph(name=name)
 
@@ -583,14 +586,14 @@ class Orchestrator:
 
         logger.info(f"Executing graph: {graph.name} ({len(graph.nodes)} nodes)")
         self.streamer.emit("graph_start", {"id": graph.id, "name": graph.name, "nodes": len(graph.nodes)})
-        self.audit.record("graph_start", OpClass.SAFE, details=graph.name)
+        self.audit.record(AuditEntry(operation="graph_start", classification=OpClass.SAFE, details=graph.name))
 
         # Concurrent execution of ready nodes
         try:
             graph._validate_no_cycles()
         except Exception as e:
             logger.error(f"Graph validation failed: {e}")
-            self.audit.record("graph_error", OpClass.SAFE, details=str(e))
+            self.audit.record(AuditEntry(operation="graph_error", classification=OpClass.SAFE, details=str(e)))
             raise
 
         import concurrent.futures
@@ -629,10 +632,11 @@ class Orchestrator:
         done, total = graph.progress
         self.streamer.emit("graph_complete", {"id": graph.id, "success": not graph.has_failures, "done": done, "total": total})
         logger.info(f"Graph complete: {done}/{total} nodes, failures={graph.has_failures}")
-        self.audit.record(
-            "graph_complete", OpClass.SAFE,
+        self.audit.record(AuditEntry(
+            operation="graph_complete",
+            classification=OpClass.SAFE,
             details=f"{done}/{total} nodes, failures={graph.has_failures}",
-        )
+        ))
 
         # ── Post-execution learning ──────────────────────────
         self._post_execute_learn(graph)
@@ -675,11 +679,11 @@ class Orchestrator:
                     plugin_name = f"self_evolved_{target_tool}"
                     if hasattr(self, "plugins") and self.plugins.get_plugin(plugin_name):
                         logger.info(f"Dynamically generated tool '{target_tool}' produced a warning. Triggering Code Agent reflexivity.")
-                        self.audit.record(
-                            "code_agent_reflexivity_triggered",
-                            OpClass.SAFE,
+                        self.audit.record(AuditEntry(
+                            operation="code_agent_reflexivity_triggered",
+                            classification=OpClass.SAFE,
                             details=f"Tool '{target_tool}' triggered reflexivity due to warning: {out_str[:100]}"
-                        )
+                        ))
                         # Delegate task to Code Agent to evolve the tool
                         task = {
                             "name": f"Evolve Tool {target_tool}",
@@ -761,10 +765,11 @@ class Orchestrator:
                         self.skills.create(new_skill)
 
                         logger.info(f"  AI learned new skill: '{new_skill.id}' from successful execution")
-                        self.audit.record(
-                            "ai_skill_learned", OpClass.SAFE,
+                        self.audit.record(AuditEntry(
+                            operation="ai_skill_learned",
+                            classification=OpClass.SAFE,
                             details=f"Skill '{new_skill.id}': {new_skill.description[:100]}",
-                        )
+                        ))
 
                         # Record in meta-memory
                         self.memory.record_optimization(
@@ -808,12 +813,13 @@ class Orchestrator:
                     f"  Node [{node.id}] requires confirmation (class={op_class.value}). "
                     "Skipping in autonomous mode."
                 )
-                self.audit.record(
-                    "node_blocked", op_class,
+                self.audit.record(AuditEntry(
+                    operation="node_blocked",
+                    classification=op_class,
                     node_id=node.id,
                     details=f"Blocked: {cmd_str[:100]}",
                     approved=False,
-                )
+                ))
                 node.state = NodeState.SKIPPED
                 node.result = NodeResult(
                     success=False,
@@ -844,11 +850,12 @@ class Orchestrator:
 
         # ── Execute with retry ───────────────────────────
         node.state = NodeState.RUNNING
-        self.audit.record(
-            f"node_execute", op_class,
+        self.audit.record(AuditEntry(
+            operation="node_execute",
+            classification=op_class,
             node_id=node.id,
             details=f"Layer={layer.level.value} Action={str(action)[:200]}",
-        )
+        ))
 
         attempts = 0
         current_layer = layer

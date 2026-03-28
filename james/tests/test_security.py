@@ -7,7 +7,7 @@ import tempfile
 
 import pytest
 from james.security import (
-    AuditLog, OpClass, RestorePointManager, SecurityPolicy,
+    AuditEntry, AuditLog, OpClass, RestorePointManager, SecurityPolicy,
     EvolutionBoundary,
 )
 
@@ -59,7 +59,7 @@ class TestAuditLog:
     def test_record_and_read(self):
         with tempfile.TemporaryDirectory() as td:
             log = AuditLog(os.path.join(td, "audit.jsonl"))
-            log.record("test_op", OpClass.SAFE, details="test details")
+            log.record(AuditEntry(operation="test_op", classification=OpClass.SAFE, details="test details"))
             entries = log.read_recent(10)
             assert len(entries) == 1
             assert entries[0]["op"] == "test_op"
@@ -69,7 +69,7 @@ class TestAuditLog:
         with tempfile.TemporaryDirectory() as td:
             log = AuditLog(os.path.join(td, "audit.jsonl"))
             for i in range(5):
-                log.record(f"op_{i}", OpClass.SAFE)
+                log.record(AuditEntry(operation=f"op_{i}", classification=OpClass.SAFE))
             assert log.entry_count == 5
             entries = log.read_recent(3)
             assert len(entries) == 3
@@ -82,7 +82,7 @@ class TestAuditLog:
     def test_approved_flag(self):
         with tempfile.TemporaryDirectory() as td:
             log = AuditLog(os.path.join(td, "audit.jsonl"))
-            log.record("blocked", OpClass.DESTRUCTIVE, approved=False)
+            log.record(AuditEntry(operation="blocked", classification=OpClass.DESTRUCTIVE, approved=False))
             entries = log.read_recent()
             assert entries[0]["approved"] is False
 
