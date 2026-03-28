@@ -18,6 +18,7 @@ import json
 import logging
 import os
 import sqlite3
+import threading
 import time
 from typing import Optional
 
@@ -34,12 +35,18 @@ class ConversationStore:
 
     def __init__(self, db_path: str):
         self._db_path = db_path
-        os.makedirs(os.path.dirname(db_path), exist_ok=True)
+        # Use a consistent path initialization
+        db_dir = os.path.dirname(db_path)
+        if db_dir:
+            os.makedirs(db_dir, exist_ok=True)
+        # Initialize persistent connection
+        self._conn = sqlite3.connect(self._db_path, check_same_thread=False)
+        self._lock = threading.Lock()
         self._init_db()
 
     def _init_db(self) -> None:
         """Create tables if they don't exist."""
-        with sqlite3.connect(self._db_path) as conn:
+        with self._lock, self._conn as conn:
             conn.execute("""
                 CREATE TABLE IF NOT EXISTS conversations (
                     id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -67,7 +74,7 @@ class ConversationStore:
     # ── Messages ─────────────────────────────────────────────────
 
     def save_message(self, conversation: str, role: str, content: str,
-                     metadata: dict = None) -> int:
+                     metadata: Optional[dict] = None) -> int:
         """
         Save a message to a conversation.
 
@@ -83,7 +90,7 @@ class ConversationStore:
         now = time.time()
         meta_json = json.dumps(metadata) if metadata else None
 
-        with sqlite3.connect(self._db_path) as conn:
+        with self._lock, self._conn as conn:
             # Upsert conversation record
             existing = conn.execute(
                 "SELECT id FROM conversations WHERE name = ?",
@@ -106,10 +113,10 @@ class ConversationStore:
                 "INSERT INTO messages (conversation_name, role, content, metadata, timestamp) VALUES (?, ?, ?, ?, ?)",
                 (conversation, role, content, meta_json, now)
             )
-            return cursor.lastrowid
+            return cursor.lastrowid or 0
 
     def get_history(self, conversation: str, limit: int = 20,
-                    before: float = None) -> list[dict]:
+                    before: Optional[float] = None) -> list[dict]:
         """
         Get recent messages from a conversation.
 
@@ -121,7 +128,7 @@ class ConversationStore:
         Returns:
             List of message dicts in chronological order.
         """
-        with sqlite3.connect(self._db_path) as conn:
+        with self._lock, self._conn as conn:
             if before:
                 rows = conn.execute(
                     "SELECT role, content, metadata, timestamp FROM messages "
@@ -154,7 +161,7 @@ class ConversationStore:
 
     def list_conversations(self, limit: int = 50) -> list[dict]:
         """List all conversations with metadata."""
-        with sqlite3.connect(self._db_path) as conn:
+        with self._lock, self._conn as conn:
             rows = conn.execute(
                 "SELECT name, created_at, updated_at, message_count "
                 "FROM conversations ORDER BY updated_at DESC LIMIT ?",
@@ -173,7 +180,7 @@ class ConversationStore:
 
     def delete_conversation(self, conversation: str) -> bool:
         """Delete a conversation and all its messages."""
-        with sqlite3.connect(self._db_path) as conn:
+        with self._lock, self._conn as conn:
             conn.execute(
                 "DELETE FROM messages WHERE conversation_name = ?",
                 (conversation,)
@@ -186,14 +193,14 @@ class ConversationStore:
 
     def clear_all(self) -> int:
         """Delete all conversations and messages."""
-        with sqlite3.connect(self._db_path) as conn:
+        with self._lock, self._conn as conn:
             conn.execute("DELETE FROM messages")
             result = conn.execute("DELETE FROM conversations")
             return result.rowcount
 
     def get_conversation_info(self, conversation: str) -> Optional[dict]:
         """Get metadata for a specific conversation."""
-        with sqlite3.connect(self._db_path) as conn:
+        with self._lock, self._conn as conn:
             row = conn.execute(
                 "SELECT name, created_at, updated_at, message_count "
                 "FROM conversations WHERE name = ?",
@@ -209,10 +216,15 @@ class ConversationStore:
             }
         return None
 
+    def close(self):
+        """Close the database connection."""
+        with self._lock:
+            self._conn.close()
+
     # ── Status ───────────────────────────────────────────────────
 
     def status(self) -> dict:
-        with sqlite3.connect(self._db_path) as conn:
+        with self._lock, self._conn as conn:
             conv_count = conn.execute("SELECT COUNT(*) FROM conversations").fetchone()[0]
             msg_count = conn.execute("SELECT COUNT(*) FROM messages").fetchone()[0]
         return {
