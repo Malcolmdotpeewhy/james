@@ -106,7 +106,7 @@ class Orchestrator:
         )
 
         # Task Scheduler
-        from james.scheduler import TaskScheduler
+        from james.scheduler import TaskScheduler, TaskSchedule
         self.scheduler = TaskScheduler(
             db_path=os.path.join(self._james_dir, "memory", "scheduler.db"),
             orchestrator=self,
@@ -213,8 +213,10 @@ class Orchestrator:
         self.scheduler.add_task(
             name="Auto-Prune Tools",
             task=_json.dumps(prune_task),
-            schedule_type="interval",
-            interval_seconds=86400
+            schedule=TaskSchedule(
+                schedule_type="interval",
+                interval_seconds=86400
+            )
         )
 
         # ── Phase 6 ────────────────────────────────────────────────
