@@ -37,6 +37,11 @@ class EvolutionBoundary(Enum):
     ALLOWED = "allowed"
     RESTRICTED = "restricted"
 
+class Role(Enum):
+    """User/Execution Authorization Roles for RBAC."""
+    ADMIN = "admin"
+    USER = "user"
+    READONLY = "readonly"
 
 # ── Destructive operation keywords ──────────────────────────────
 
@@ -83,6 +88,7 @@ class SecurityPolicy:
     def __init__(self, config_path: Optional[str] = None):
         self._config: dict = {}
         self._config_path = config_path
+        self.default_role = Role.ADMIN
         if config_path and os.path.isfile(config_path):
             self._load_config(config_path)
 
@@ -139,8 +145,28 @@ class SecurityPolicy:
 
         return OpClass.SAFE
 
-    def requires_confirmation(self, op_class: OpClass) -> bool:
-        """Check if an operation class requires user confirmation."""
+    def is_permitted(self, op_class: OpClass, role: Optional[Role] = None) -> bool:
+        """Check if a role is permitted to execute an operation class."""
+        current_role = role or self.default_role
+        
+        if current_role == Role.ADMIN:
+            return True
+        elif current_role == Role.READONLY:
+            return op_class == OpClass.SAFE
+        elif current_role == Role.USER:
+            # Users can run SAFE and SYSTEM, but not DESTRUCTIVE or PRODUCTION natively
+            return op_class not in (OpClass.DESTRUCTIVE, OpClass.PRODUCTION)
+            
+        return False
+
+    def requires_confirmation(self, op_class: OpClass, role: Optional[Role] = None) -> bool:
+        """Check if an operation class requires user confirmation based on role."""
+        current_role = role or self.default_role
+        
+        if current_role == Role.READONLY:
+            # Readonly cannot run risky tasks EVEN with confirmation
+            return op_class != OpClass.SAFE
+
         if op_class == OpClass.DESTRUCTIVE:
             return self.destructive_requires_confirmation
         if op_class == OpClass.PRODUCTION:

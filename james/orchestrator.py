@@ -188,6 +188,35 @@ class Orchestrator:
         set_plugins(self.plugins)
         set_agents(self.agents)
 
+        # ── Background Tasks ───────────────────────────────────────
+        self.tools.register(
+            "prune_evolved_tools",
+            lambda **kwargs: self.expander.prune_tools(kwargs.get("days_old", 30)),
+            "Prune old self-evolved tools older than N days."
+        )
+
+        # Schedule the prune_evolved_tools background task to run every 24 hours
+        prune_task = {
+            "name": "prune_tools",
+            "steps": [
+                {
+                    "name": "prune",
+                    "action": {
+                        "type": "tool_call",
+                        "target": "prune_evolved_tools",
+                        "kwargs": {"days_old": 30}
+                    }
+                }
+            ]
+        }
+        import json as _json
+        self.scheduler.add_task(
+            name="Auto-Prune Tools",
+            task=_json.dumps(prune_task),
+            schedule_type="interval",
+            interval_seconds=86400
+        )
+
         # ── Phase 6 ────────────────────────────────────────────────
         
         # Streaming Event Bus
@@ -558,7 +587,6 @@ class Orchestrator:
 
         # Concurrent execution of ready nodes
         try:
-            # Validate no cycles first
             graph._validate_no_cycles()
         except Exception as e:
             logger.error(f"Graph validation failed: {e}")
@@ -566,42 +594,33 @@ class Orchestrator:
             raise
 
         import concurrent.futures
-        import threading
-
+        from james.dag import NodeState
+        
         with concurrent.futures.ThreadPoolExecutor(max_workers=10) as executor:
-            active_futures = set()
-
-            while not graph.is_complete and not graph.has_failures:
-                # Find nodes ready to run
-                ready = graph.get_ready_nodes()
-
-                for node in ready:
-                    # Mark as RUNNING immediately so it isn't picked up again
-                    node.state = NodeState.RUNNING
+            futures = set()
+            while True:
+                ready_nodes = graph.get_ready_nodes()
+                for node in ready_nodes:
+                    node.state = NodeState.RUNNING  # Prevent picking it up again
                     future = executor.submit(self._execute_node, node, graph)
-                    active_futures.add(future)
-
-                if active_futures:
-                    # Wait for at least one future to finish
-                    done, _ = concurrent.futures.wait(
-                        active_futures, return_when=concurrent.futures.FIRST_COMPLETED
-                    )
-                    active_futures.difference_update(done)
-
-                    # Check for exceptions from completed futures
-                    for f in done:
-                        try:
-                            f.result()
-                        except Exception as e:
-                            logger.error(f"Node execution raised exception: {e}")
-                else:
-                    # Should not reach here if the graph isn't complete but there's no ready node
-                    # but if it does (e.g. all nodes pending but dependencies unsatisfied),
-                    # it means there's a problem (unreachable nodes).
+                    futures.add(future)
+                    
+                if not futures:
+                    # No nodes are running and no nodes are ready. Deadlock or finished.
                     break
-
-            # If there are failures, we cancel remaining or let them finish.
-            # Using context manager will wait for them.
+                    
+                done, not_done = concurrent.futures.wait(
+                    futures, return_when=concurrent.futures.FIRST_COMPLETED
+                )
+                
+                for f in done:
+                    # Retrieve any thrown exceptions to prevent silent thread crashes
+                    try:
+                        f.result()
+                    except Exception as e:
+                        logger.error(f"Node execution thread crashed: {e}")
+                
+                futures = not_done
 
         graph.completed_at = time.time()
         self.memory.st_set("active_graph", graph.to_dict())
@@ -645,6 +664,45 @@ class Orchestrator:
             pass
 
         # ── AI-powered skill generation from successful runs ─
+        # Check for dynamically generated tools that encountered warnings
+        for nid, node in graph.nodes.items():
+            if node.state == NodeState.SUCCESS and node.result and node.result.output:
+                out_str = str(node.result.output).lower()
+                action_type = node.action.get("type", "") if isinstance(node.action, dict) else ""
+                if action_type == "tool_call" and ("warning" in out_str or "deprecated" in out_str):
+                    target_tool = node.action.get("target", "")
+                    # Check if it's a self-evolved plugin tool
+                    plugin_name = f"self_evolved_{target_tool}"
+                    if hasattr(self, "plugins") and self.plugins.get_plugin(plugin_name):
+                        logger.info(f"Dynamically generated tool '{target_tool}' produced a warning. Triggering Code Agent reflexivity.")
+                        self.audit.record(
+                            "code_agent_reflexivity_triggered",
+                            OpClass.SAFE,
+                            details=f"Tool '{target_tool}' triggered reflexivity due to warning: {out_str[:100]}"
+                        )
+                        # Delegate task to Code Agent to evolve the tool
+                        task = {
+                            "name": f"Evolve Tool {target_tool}",
+                            "steps": [
+                                {
+                                    "name": "evolve_tool",
+                                    "action": {
+                                        "type": "tool_call",
+                                        "target": "evolve_tool_code",
+                                        "kwargs": {
+                                            "tool_name": target_tool,
+                                            "warning": str(node.result.output)
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                        try:
+                            from james.agents import AgentRole
+                            self.agents.delegate(task, role=AgentRole.CODE)
+                        except Exception as e:
+                            logger.error(f"Failed to delegate reflexivity task to Code Agent: {e}")
+
         if (
             not graph.has_failures
             and total >= 2  # multi-step tasks are worth learning
@@ -986,7 +1044,7 @@ class Orchestrator:
             pass
 
         return {
-            "version": "2.2.0",
+            "version": "2.3.0",
             "project_root": self._root,
             "layers": {
                 "registered": self.layers.registered_count,
