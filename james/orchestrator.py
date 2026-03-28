@@ -556,17 +556,52 @@ class Orchestrator:
         self.streamer.emit("graph_start", {"id": graph.id, "name": graph.name, "nodes": len(graph.nodes)})
         self.audit.record("graph_start", OpClass.SAFE, details=graph.name)
 
-        # Topological execution
+        # Concurrent execution of ready nodes
         try:
-            order = graph.topological_sort()
+            # Validate no cycles first
+            graph._validate_no_cycles()
         except Exception as e:
             logger.error(f"Graph validation failed: {e}")
             self.audit.record("graph_error", OpClass.SAFE, details=str(e))
             raise
 
-        for node_id in order:
-            node = graph.get_node(node_id)
-            self._execute_node(node, graph)
+        import concurrent.futures
+        import threading
+
+        with concurrent.futures.ThreadPoolExecutor(max_workers=10) as executor:
+            active_futures = set()
+
+            while not graph.is_complete and not graph.has_failures:
+                # Find nodes ready to run
+                ready = graph.get_ready_nodes()
+
+                for node in ready:
+                    # Mark as RUNNING immediately so it isn't picked up again
+                    node.state = NodeState.RUNNING
+                    future = executor.submit(self._execute_node, node, graph)
+                    active_futures.add(future)
+
+                if active_futures:
+                    # Wait for at least one future to finish
+                    done, _ = concurrent.futures.wait(
+                        active_futures, return_when=concurrent.futures.FIRST_COMPLETED
+                    )
+                    active_futures.difference_update(done)
+
+                    # Check for exceptions from completed futures
+                    for f in done:
+                        try:
+                            f.result()
+                        except Exception as e:
+                            logger.error(f"Node execution raised exception: {e}")
+                else:
+                    # Should not reach here if the graph isn't complete but there's no ready node
+                    # but if it does (e.g. all nodes pending but dependencies unsatisfied),
+                    # it means there's a problem (unreachable nodes).
+                    break
+
+            # If there are failures, we cancel remaining or let them finish.
+            # Using context manager will wait for them.
 
         graph.completed_at = time.time()
         self.memory.st_set("active_graph", graph.to_dict())
