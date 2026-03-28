@@ -370,7 +370,19 @@ class Orchestrator:
             "available_layers": self.layers.available_count,
         }
 
-        # ── Inject available tools (AI can use tool_call action type) ──
+        self._inject_tools_context(context)
+        self._inject_skills_context(context, task_description)
+        self._inject_system_map_context(context)
+        self._inject_ltm_context(context)
+        self._inject_execution_history_context(context)
+        self._inject_recent_failures_context(context)
+        self._inject_relevant_memories_context(context, task_description)
+        self._inject_rag_context(context, task_description)
+
+        return context
+
+    def _inject_tools_context(self, context: dict) -> None:
+        """Inject available tools (AI can use tool_call action type)."""
         try:
             tool_list = self.tools.list_tools()
             context["available_tools"] = [
@@ -380,7 +392,8 @@ class Orchestrator:
         except Exception:
             pass
 
-        # ── Inject relevant skills (the AI can reuse proven methods) ──
+    def _inject_skills_context(self, context: dict, task_description: str) -> None:
+        """Inject relevant skills (the AI can reuse proven methods)."""
         try:
             # Search for skills matching the task description
             matching_skills = self.skills.search(task_description)
@@ -409,7 +422,8 @@ class Orchestrator:
         except Exception:
             pass
 
-        # ── Inject system map (known tools and paths) ────────────
+    def _inject_system_map_context(self, context: dict) -> None:
+        """Inject system map (known tools and paths)."""
         try:
             system_tools = self.memory.map_list(category="tool")
             if system_tools:
@@ -419,7 +433,8 @@ class Orchestrator:
         except Exception:
             pass
 
-        # ── Inject recent Long-Term Memories (context facts) ─────
+    def _inject_ltm_context(self, context: dict) -> None:
+        """Inject recent Long-Term Memories (context facts)."""
         try:
             # Fetch recent general or project context saved by the AI
             ltm_facts = self.memory.lt_list(limit=20)
@@ -431,7 +446,8 @@ class Orchestrator:
         except Exception:
             pass
 
-        # ── Inject recent execution history (learns from past) ───
+    def _inject_execution_history_context(self, context: dict) -> None:
+        """Inject recent execution history (learns from past)."""
         try:
             recent_metrics = self.memory.get_metrics(limit=10)
             if recent_metrics:
@@ -448,7 +464,8 @@ class Orchestrator:
         except Exception:
             pass
 
-        # ── Inject recent failures (avoid repeating mistakes) ────
+    def _inject_recent_failures_context(self, context: dict) -> None:
+        """Inject recent failures (avoid repeating mistakes)."""
         try:
             failures = self.failures.get_history(limit=5)
             if failures:
@@ -463,7 +480,8 @@ class Orchestrator:
         except Exception:
             pass
 
-        # ── Inject semantically relevant memories (vector search) ─
+    def _inject_relevant_memories_context(self, context: dict, task_description: str) -> None:
+        """Inject semantically relevant memories (vector search)."""
         try:
             if self.vectors.count > 0:
                 vector_results = self.vectors.search(task_description, top_k=5)
@@ -492,7 +510,8 @@ class Orchestrator:
             except Exception:
                 pass
 
-        # ── Inject RAG document context ───────────────────────────
+    def _inject_rag_context(self, context: dict, task_description: str) -> None:
+        """Inject RAG document context."""
         try:
             if self.rag and self.rag._vector_store.count > 0:
                 rag_results = self.rag.get_context(task_description, top_k=3)
@@ -500,8 +519,6 @@ class Orchestrator:
                     context["relevant_documents"] = rag_results
         except Exception:
             pass
-
-        return context
 
     def _plan_from_dict(self, task: dict) -> ExecutionGraph:
         """Plan from a structured task dictionary."""
