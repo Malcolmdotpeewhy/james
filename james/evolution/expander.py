@@ -212,12 +212,14 @@ class CapabilityExpander:
     """
 
     MAX_RETRIES = 3
+    MAX_TOOLS_PER_HOUR = 5
 
     def __init__(self, orchestrator=None, memory=None):
         self.orch = orchestrator
         self.memory = memory
         self.sandbox = ToolSandbox()
         self._expansion_history: list[dict] = []
+        self._generation_timestamps: list[float] = []
 
     def analyze_failure(self, error: str, task: str) -> GapAnalysis:
         """
@@ -412,6 +414,25 @@ Return ONLY the valid Python code, no markdown or text wrappers. Do not wrap cod
         if not tool_name or not self.orch:
             return {"recovered": False, "action": "no_tool_name"}
 
+        # Rate Limit Check
+        now = time.time()
+        self._generation_timestamps = [t for t in self._generation_timestamps if now - t < 3600]
+        if len(self._generation_timestamps) >= self.MAX_TOOLS_PER_HOUR:
+            if self.orch and hasattr(self.orch, "audit"):
+                from james.security import OpClass
+                self.orch.audit.record(
+                    "tool_generation_rate_limit",
+                    OpClass.SAFE,
+                    details=f"Rate limit exceeded (max {self.MAX_TOOLS_PER_HOUR}/hour). Blocked generating '{tool_name}'."
+                )
+            logger.warning(f"Tool generation rate limit exceeded. Blocked generating '{tool_name}'.")
+            return {
+                "recovered": False,
+                "action": "rate_limit_exceeded",
+                "missing_tool": tool_name,
+                "message": f"Rate limit of {self.MAX_TOOLS_PER_HOUR} tools per hour exceeded."
+            }
+
         # First, search for similar existing tools in the registry
         available = self.orch.tools.list_tools()
         similar = []
@@ -454,7 +475,6 @@ Return ONLY the valid Python code, no markdown or text wrappers. Do not wrap cod
             # If it succeeded or legitimately asked for kwargs, it's structurally valid code
             try:
                 # Generate plugin files
-                import time
                 plugin_name = f"self_evolved_{tool_name}"
                 
                 # We need james root
@@ -508,7 +528,17 @@ Return ONLY the valid Python code, no markdown or text wrappers. Do not wrap cod
                         category="evolution"
                     )
 
+                self._generation_timestamps.append(time.time())
                 logger.info(f"Successfully registered auto-generated tool '{tool_name}' via plugin '{plugin_name}'")
+
+                if self.orch and hasattr(self.orch, "audit"):
+                    from james.security import OpClass
+                    self.orch.audit.record(
+                        "tool_generated",
+                        OpClass.SAFE,
+                        details=f"Successfully generated tool '{tool_name}' via plugin '{plugin_name}'."
+                    )
+
                 return {
                     "recovered": True,
                     "action": "dynamic_tool_registered",
@@ -572,6 +602,14 @@ Return ONLY the valid Python code, no markdown or text wrappers. Do not wrap cod
                                 shutil.rmtree(plugin_path)
                                 pruned.append(item)
                                 logger.info(f"Pruned old self-evolved tool: {item}")
+
+                                if hasattr(self.orch, "audit"):
+                                    from james.security import OpClass
+                                    self.orch.audit.record(
+                                        "tool_pruned",
+                                        OpClass.SAFE,
+                                        details=f"Pruned tool plugin '{item}' older than {days_old} days."
+                                    )
 
             return {
                 "status": "success",

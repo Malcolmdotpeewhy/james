@@ -338,6 +338,11 @@ class ToolRegistry:
              "agent_name": "specific agent to use (optional)",
              "role": "agent role like 'code', 'research', 'system' (optional)"})
 
+        # ── Tool Evolution ─────────────────────────────────────────
+        self.register("evolve_tool_code", _tool_evolve_tool_code,
+            "Rewrite a dynamically generated tool's source code to fix edge cases or warnings, bumping its version.",
+            {"tool_name": "The name of the tool to evolve", "warning": "The error, warning, or feedback guiding the rewrite"})
+
 # ══════════════════════════════════════════════════════════════════
 # TOOL IMPLEMENTATIONS
 # ══════════════════════════════════════════════════════════════════
@@ -1423,6 +1428,121 @@ def _tool_delegate_task(task: str = "", agent_name: str = None, role: str = None
         "duration_ms": result.duration_ms
     }
 
+
+def _tool_evolve_tool_code(tool_name: str = "", warning: str = "", **kwargs) -> dict:
+    """Use AI to rewrite and improve a generated tool's code, handling edge cases."""
+    if not tool_name:
+        return {"error": "tool_name is required"}
+
+    from james import ai as james_ai
+    import json as _json
+    from pathlib import Path as _Path
+    import re
+    if not james_ai.is_available():
+        return {"error": "AI is not available to evolve the tool."}
+
+    plugin_name = f"self_evolved_{tool_name}"
+    # Calculate plugins directory path relative to this file (james/tools/registry.py -> james/plugins)
+    plugins_dir = os.path.join(_Path(__file__).resolve().parent.parent, "plugins")
+    target_dir = os.path.join(plugins_dir, plugin_name)
+    main_py = os.path.join(target_dir, "main.py")
+    manifest_json = os.path.join(target_dir, "manifest.json")
+
+    if not os.path.exists(main_py):
+        return {"error": f"Tool plugin '{plugin_name}' not found at {main_py}"}
+
+    with open(main_py, "r", encoding="utf-8") as f:
+        old_code = f.read()
+
+    prompt = f"""You are a senior Python software engineer. You need to improve the following JAMES tool code.
+The tool `{tool_name}` produced this warning or encountered this edge case during execution:
+"{warning}"
+
+Please rewrite the tool's core logic to address the warning, improve safety, and handle edge cases gracefully.
+Here is the current code:
+```python
+{old_code}
+```
+
+Requirements:
+1. Maintain the existing `register` function logic at the bottom.
+2. The main tool function must be named `_tool_{tool_name}` and return a dict.
+3. Handle any new imports required.
+4. Output ONLY the raw Python code, without markdown formatting or code blocks. Do not wrap code in ```python tags.
+"""
+
+    messages = [
+        {"role": "system", "content": "You are a Python code generator. Output only valid Python code without formatting fences."},
+        {"role": "user", "content": prompt},
+    ]
+
+    try:
+        from james.ai.local_llm import _call_api
+        new_code = _call_api(messages, temperature=0.1)
+
+        if not new_code:
+            return {"error": "AI returned empty code."}
+
+        # Robustly extract python code block using regex
+        match = re.search(r"```python\s*(.*?)\s*```", new_code, re.DOTALL | re.IGNORECASE)
+        if match:
+            new_code = match.group(1).strip()
+        elif new_code.startswith("```"):
+            lines = new_code.split("\n")
+            if "python" in lines[0].lower():
+                lines = lines[1:]
+            while lines and lines[-1].strip() == "```":
+                lines = lines[:-1]
+            new_code = "\n".join(lines).strip()
+
+        # Sandbox validate the code
+        from james.evolution.expander import ToolSandbox
+        sandbox = ToolSandbox()
+        sa = sandbox.validate_code_safety(new_code)
+        if not sa["safe"]:
+             return {"error": f"Safety validation failed on new code: {sa['violations']}"}
+
+        # We don't execute it right away, just syntax check
+        test = sandbox.test_tool(new_code, f"_tool_{tool_name}", {})
+        if not test["success"] and "missing required positional arguments" not in str(test.get("error", "")).lower():
+            return {"error": f"Sandbox syntax check failed: {test.get('error')}"}
+
+        # Save new code
+        with open(main_py, "w", encoding="utf-8") as f:
+            f.write(new_code)
+
+        # Update manifest version
+        if os.path.exists(manifest_json):
+            with open(manifest_json, "r", encoding="utf-8") as f:
+                manifest = _json.load(f)
+
+            # Bump version naive e.g. 1.0 -> 2.0
+            v = manifest.get("version", "1.0")
+            try:
+                major = int(float(v))
+                manifest["version"] = f"{major + 1}.0"
+            except ValueError:
+                manifest["version"] = "2.0"
+
+            manifest["description"] = f"{manifest.get('description', '')} (Evolved to fix warning)"
+            with open(manifest_json, "w", encoding="utf-8") as f:
+                _json.dump(manifest, f, indent=2)
+
+        # Reload plugin if possible
+        if _ACTIVE_PLUGINS:
+            _ACTIVE_PLUGINS.unload(plugin_name)
+            res = _ACTIVE_PLUGINS.load(plugin_name)
+            if res.get("status") == "error":
+                return {"error": f"Generated code failed to load: {res.get('error')}"}
+
+        return {
+            "status": "success",
+            "tool_name": tool_name,
+            "message": f"Tool '{tool_name}' successfully evolved to V2 and reloaded.",
+            "new_code_length": len(new_code)
+        }
+    except Exception as e:
+        return {"error": str(e)}
 
 def get_registry() -> ToolRegistry:
     """Get or create the global tool registry singleton."""
