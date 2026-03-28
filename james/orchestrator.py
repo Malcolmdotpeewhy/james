@@ -188,6 +188,35 @@ class Orchestrator:
         set_plugins(self.plugins)
         set_agents(self.agents)
 
+        # ── Background Tasks ───────────────────────────────────────
+        self.tools.register(
+            "prune_evolved_tools",
+            lambda **kwargs: self.expander.prune_tools(kwargs.get("days_old", 30)),
+            "Prune old self-evolved tools older than N days."
+        )
+
+        # Schedule the prune_evolved_tools background task to run every 24 hours
+        prune_task = {
+            "name": "prune_tools",
+            "steps": [
+                {
+                    "name": "prune",
+                    "action": {
+                        "type": "tool_call",
+                        "target": "prune_evolved_tools",
+                        "kwargs": {"days_old": 30}
+                    }
+                }
+            ]
+        }
+        import json as _json
+        self.scheduler.add_task(
+            name="Auto-Prune Tools",
+            task=_json.dumps(prune_task),
+            schedule_type="interval",
+            interval_seconds=86400
+        )
+
         # ── Phase 6 ────────────────────────────────────────────────
         
         # Streaming Event Bus
@@ -610,6 +639,45 @@ class Orchestrator:
             pass
 
         # ── AI-powered skill generation from successful runs ─
+        # Check for dynamically generated tools that encountered warnings
+        for nid, node in graph.nodes.items():
+            if node.state == NodeState.SUCCESS and node.result and node.result.output:
+                out_str = str(node.result.output).lower()
+                action_type = node.action.get("type", "") if isinstance(node.action, dict) else ""
+                if action_type == "tool_call" and ("warning" in out_str or "deprecated" in out_str):
+                    target_tool = node.action.get("target", "")
+                    # Check if it's a self-evolved plugin tool
+                    plugin_name = f"self_evolved_{target_tool}"
+                    if hasattr(self, "plugins") and self.plugins.get_plugin(plugin_name):
+                        logger.info(f"Dynamically generated tool '{target_tool}' produced a warning. Triggering Code Agent reflexivity.")
+                        self.audit.record(
+                            "code_agent_reflexivity_triggered",
+                            OpClass.SAFE,
+                            details=f"Tool '{target_tool}' triggered reflexivity due to warning: {out_str[:100]}"
+                        )
+                        # Delegate task to Code Agent to evolve the tool
+                        task = {
+                            "name": f"Evolve Tool {target_tool}",
+                            "steps": [
+                                {
+                                    "name": "evolve_tool",
+                                    "action": {
+                                        "type": "tool_call",
+                                        "target": "evolve_tool_code",
+                                        "kwargs": {
+                                            "tool_name": target_tool,
+                                            "warning": str(node.result.output)
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                        try:
+                            from james.agents import AgentRole
+                            self.agents.delegate(task, role=AgentRole.CODE)
+                        except Exception as e:
+                            logger.error(f"Failed to delegate reflexivity task to Code Agent: {e}")
+
         if (
             not graph.has_failures
             and total >= 2  # multi-step tasks are worth learning
