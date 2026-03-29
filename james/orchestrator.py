@@ -980,13 +980,9 @@ class Orchestrator:
             if recovery and recovery.get("recovered"):
                 # Recovery succeeded (e.g. missing package installed) — retry once
                 logger.info(f"  Auto-recovery succeeded ({recovery.get('action')}), retrying...")
-                result = current_layer.execute(
-                    action_type,
-                    target=node.action.get("target", ""),
-                    kwargs=node.action.get("kwargs", {}),
-                )
+                result = current_layer.execute(node.action)
                 if result and result.success:
-                    node.state = NodeState.COMPLETED
+                    node.state = NodeState.SUCCESS
                     node.result = NodeResult(
                         success=True,
                         output=result.output,
@@ -995,7 +991,7 @@ class Orchestrator:
                         attempts=attempts + 1,
                         metadata={"auto_recovered": True, "recovery_action": recovery.get("action")},
                     )
-                    logger.info(f"  Node [{node.id}] COMPLETED after auto-recovery")
+                    logger.info(f"  Node [{node.id}] SUCCESS after auto-recovery")
                     self.streamer.emit("node_complete", {
                         "node_id": node.id, "success": True, 
                         "output": str(result.output)[:1000] if result.output else None,
