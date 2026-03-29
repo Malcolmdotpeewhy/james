@@ -188,3 +188,20 @@ class TestExecutionGraph:
         path = graph.get_critical_path()
         assert "a" in path
         assert "b" in path  # b is slower than c
+
+    def test_update_skipped_nodes(self):
+        graph = ExecutionGraph(name="skipped_test")
+        graph.add_node(Node(id="a", name="A"))
+        graph.add_node(Node(id="b", name="B"))
+        graph.add_node(Node(id="c", name="C"))
+
+        graph.add_dependency("a", "b")
+        graph.add_dependency("b", "c")
+
+        graph.nodes["a"].state = NodeState.FAILED
+        graph.update_skipped_nodes()
+
+        assert graph.nodes["b"].state == NodeState.SKIPPED
+        assert graph.nodes["b"].result.success is False
+        assert graph.nodes["c"].state == NodeState.SKIPPED
+        assert graph.nodes["c"].result.success is False

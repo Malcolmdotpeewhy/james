@@ -213,6 +213,30 @@ class ExecutionGraph:
 
         return order
 
+    def update_skipped_nodes(self) -> None:
+        """
+        Identify PENDING nodes whose dependencies have entered a terminal
+        failure state (FAILED, SKIPPED, ROLLED_BACK) and mark them as SKIPPED.
+        This cascades failures down the DAG.
+        """
+        changed = True
+        while changed:
+            changed = False
+            for node in self.nodes.values():
+                if node.state == NodeState.PENDING:
+                    for dep_id in node.dependencies:
+                        if dep_id in self.nodes:
+                            dep_state = self.nodes[dep_id].state
+                            if dep_state in (NodeState.FAILED, NodeState.SKIPPED, NodeState.ROLLED_BACK):
+                                node.state = NodeState.SKIPPED
+                                node.result = NodeResult(
+                                    success=False,
+                                    error=f"Dependency '{dep_id}' failed or was skipped",
+                                    metadata={"skipped_due_to_dependency": dep_id}
+                                )
+                                changed = True
+                                break
+
     def get_ready_nodes(self) -> list[Node]:
         """
         Get all nodes whose dependencies are satisfied
