@@ -50,6 +50,32 @@ class TestFileWatcher(unittest.TestCase):
         self.watcher.stop()
         self.assertFalse(self.watcher.is_running)
 
+    def test_start_idempotent(self):
+        self.watcher.start()
+        thread1 = self.watcher._thread
+        self.assertTrue(self.watcher.is_running)
+        self.assertTrue(thread1.daemon)
+        self.assertEqual(thread1.name, "james-watcher")
+
+        self.watcher.start()
+        thread2 = self.watcher._thread
+        self.assertIs(thread1, thread2)
+
+    def test_start_recreates_dead_thread(self):
+        self.watcher.start()
+        thread1 = self.watcher._thread
+
+        # Manually stop the thread
+        self.watcher._stop_event.set()
+        thread1.join(timeout=5)
+        self.assertFalse(thread1.is_alive())
+
+        # Start again, should create a new thread
+        self.watcher.start()
+        thread2 = self.watcher._thread
+        self.assertTrue(thread2.is_alive())
+        self.assertIsNot(thread1, thread2)
+
     def test_glob_pattern(self):
         rule_id = self.watcher.watch(
             self.tmpdir, task="!echo py changed", patterns=["*.py"]
