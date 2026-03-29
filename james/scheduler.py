@@ -368,12 +368,12 @@ class TaskScheduler:
 
             # Record in audit
             if hasattr(self.orch, "audit"):
-                from james.security import OpClass
-                self.orch.audit.record(
-                    "scheduled_task_executed",
-                    OpClass.SAFE,
+                from james.security import AuditEntry, OpClass
+                self.orch.audit.record(AuditEntry(
+                    operation="scheduled_task_executed",
+                    classification=OpClass.SAFE,
                     details=f"'{name}': {result}",
-                )
+                ))
 
             return result
 
