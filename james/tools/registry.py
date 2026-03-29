@@ -1143,13 +1143,16 @@ def _tool_schedule_task(
     if not task:
         return {"error": "No task specified. Provide 'task' parameter."}
 
+    from james.scheduler import TaskSchedule
     if interval_minutes > 0:
         # Recurring task
         task_id = _ACTIVE_SCHEDULER.add_task(
             name=name,
             task=task,
-            schedule_type="interval",
-            interval_seconds=int(interval_minutes * 60),
+            schedule=TaskSchedule(
+                schedule_type="interval",
+                interval_seconds=int(interval_minutes * 60),
+            )
         )
         return {
             "status": "scheduled",
@@ -1164,8 +1167,10 @@ def _tool_schedule_task(
         task_id = _ACTIVE_SCHEDULER.add_task(
             name=name,
             task=task,
-            schedule_type="once",
-            delay_seconds=delay_secs,
+            schedule=TaskSchedule(
+                schedule_type="once",
+                delay_seconds=delay_secs,
+            )
         )
         return {
             "status": "scheduled",
