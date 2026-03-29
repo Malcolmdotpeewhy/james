@@ -15,11 +15,11 @@ import logging
 import os
 import time
 from pathlib import Path
-from typing import Any, Callable, Optional
+from typing import Any, Optional
 
 from james.ai.plan_validator import PlanValidator
 from james.dag import ExecutionGraph, Node, NodeResult, NodeState
-from james.failure import FailureClassifier, FailureTracker
+from james.failure import FailureTracker
 from james.layers import LayerLevel, LayerRegistry
 from james.layers.native import NativeLayer
 from james.layers.application import ApplicationLayer
@@ -29,7 +29,7 @@ from james.layers.environmental import EnvironmentalLayer
 from james.memory.store import MemoryStore, ExecutionMetric
 from james.optimizer import Optimizer
 from james.security import AuditEntry, AuditLog, OpClass, RestorePointManager, SecurityPolicy
-from james.skills.skill import Skill, SkillStore
+from james.skills.skill import SkillStore
 from james.verification import Condition, VerificationEngine
 
 logger = logging.getLogger("james.orchestrator")
@@ -621,6 +621,7 @@ class Orchestrator:
         with concurrent.futures.ThreadPoolExecutor(max_workers=10) as executor:
             futures = set()
             while True:
+                graph.update_skipped_nodes()
                 ready_nodes = graph.get_ready_nodes()
                 for node in ready_nodes:
                     node.state = NodeState.RUNNING  # Prevent picking it up again
@@ -954,7 +955,7 @@ class Orchestrator:
 
             # Try layer escalation on non-transient failures
             # NEVER escalate tool_call/noop — they only work on NativeLayer.
-            from james.failure import FailureType, RecoveryAction
+            from james.failure import RecoveryAction
             is_tool_action = action_type in ("tool_call", "noop")
             if not is_tool_action and RecoveryAction.ESCALATE_LAYER in failure.recovery_actions:
                 next_layer = self.layers.escalate(current_layer.level)

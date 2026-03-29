@@ -47,3 +47,8 @@
 {"ts":1774723707.1846309,"op":"graph_start","class":"safe","node":"","details":"info","approved":true,"confirmed":false}
 {"ts":1774723707.1876397,"op":"node_execute","class":"safe","node":"428c6aba","details":"Layer=1 Action={'type': 'powershell', 'target': 'infp'}","approved":true,"confirmed":false}
 {"ts":1774723707.1901762,"op":"node_execute","class":"safe","node":"80a4f699","details":"Layer=1 Action={'type': 'powershell', 'target': 'info'}","approved":true,"confirmed":false}
+{"ts":1774776812.7814333,"op":"graph_start","class":"safe","node":"","details":"test_parallel","approved":true,"confirmed":false}
+{"ts":1774776812.7902777,"op":"node_execute","class":"safe","node":"668d489e","details":"Layer=2 Action=<function TestDAGParallelExecution.test_parallel_execution.<locals>.sleep_action at 0x7fa166fcb1a0>","approved":true,"confirmed":false}
+{"ts":1774776812.7930598,"op":"node_execute","class":"safe","node":"221ad5e0","details":"Layer=2 Action=<function TestDAGParallelExecution.test_parallel_execution.<locals>.sleep_action at 0x7fa166fcb1a0>","approved":true,"confirmed":false}
+{"ts":1774776812.7935581,"op":"node_execute","class":"safe","node":"6de9dd4b","details":"Layer=2 Action=<function TestDAGParallelExecution.test_parallel_execution.<locals>.sleep_action at 0x7fa166fcb1a0>","approved":true,"confirmed":false}
+{"ts":1774776813.7988803,"op":"graph_complete","class":"safe","node":"","details":"3/3 nodes, failures=False","approved":true,"confirmed":false}
