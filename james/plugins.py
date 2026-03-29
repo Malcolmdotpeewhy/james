@@ -32,15 +32,13 @@ logger = logging.getLogger("james.plugins")
 class PluginInfo:
     """Metadata for a loaded plugin."""
 
-    def __init__(self, name: str, version: str, description: str,
-                 path: str, tools: list[str] = None,
-                 dependencies: list[str] = None):
-        self.name = name
-        self.version = version
-        self.description = description
+    def __init__(self, path: str, manifest: dict[str, Any], default_name: str):
+        self.name = manifest.get("name", default_name)
+        self.version = manifest.get("version", "0.0")
+        self.description = manifest.get("description", "")
         self.path = path
-        self.tools = tools or []
-        self.dependencies = dependencies or []
+        self.tools = manifest.get("tools", [])
+        self.dependencies = manifest.get("dependencies", [])
         self.loaded = False
         self.module = None
         self.error: Optional[str] = None
@@ -98,12 +96,9 @@ class PluginManager:
                     manifest = json.load(f)
 
                 info = PluginInfo(
-                    name=manifest.get("name", item),
-                    version=manifest.get("version", "0.0"),
-                    description=manifest.get("description", ""),
                     path=plugin_dir,
-                    tools=manifest.get("tools", []),
-                    dependencies=manifest.get("dependencies", []),
+                    manifest=manifest,
+                    default_name=item,
                 )
                 discovered.append(info)
                 self._plugins[info.name] = info
