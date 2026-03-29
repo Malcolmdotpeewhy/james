@@ -2,9 +2,11 @@
 JAMES Unit Tests — Verification Engine
 """
 import pytest
+from unittest.mock import patch
 from james.verification import (
     Condition, VerificationEngine, VerificationStatus,
     file_exists_condition, command_available_condition,
+    directory_exists_condition, process_running_condition,
 )
 
 
@@ -117,8 +119,49 @@ class TestPrebuiltConditions:
         passed, _ = cond.evaluate()
         assert passed is False
 
-    def test_command_available(self):
-        cond = command_available_condition("python")
+    def test_directory_exists_true(self, tmp_path):
+        d = tmp_path / "test_dir"
+        d.mkdir()
+        cond = directory_exists_condition(str(d))
         passed, _ = cond.evaluate()
-        # python should be on PATH in the test environment
-        assert isinstance(passed, bool)
+        assert passed is True
+
+    def test_directory_exists_false(self, tmp_path):
+        cond = directory_exists_condition(str(tmp_path / "nope_dir"))
+        passed, _ = cond.evaluate()
+        assert passed is False
+
+    @patch('shutil.which')
+    def test_command_available_true(self, mock_which):
+        mock_which.return_value = "/usr/bin/mock_command"
+        cond = command_available_condition("mock_command")
+        passed, _ = cond.evaluate()
+        assert passed is True
+
+    @patch('shutil.which')
+    def test_command_available_false(self, mock_which):
+        mock_which.return_value = None
+        cond = command_available_condition("mock_command")
+        passed, _ = cond.evaluate()
+        assert passed is False
+
+    @patch('subprocess.run')
+    def test_process_running_true(self, mock_run):
+        mock_run.return_value.stdout = "notepad.exe"
+        cond = process_running_condition("notepad.exe")
+        passed, _ = cond.evaluate()
+        assert passed is True
+
+    @patch('subprocess.run')
+    def test_process_running_false(self, mock_run):
+        mock_run.return_value.stdout = "explorer.exe"
+        cond = process_running_condition("notepad.exe")
+        passed, _ = cond.evaluate()
+        assert passed is False
+
+    @patch('subprocess.run')
+    def test_process_running_exception(self, mock_run):
+        mock_run.side_effect = Exception("failed to run")
+        cond = process_running_condition("notepad.exe")
+        passed, _ = cond.evaluate()
+        assert passed is False
