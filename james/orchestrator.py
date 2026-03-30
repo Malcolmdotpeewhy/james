@@ -807,6 +807,18 @@ class Orchestrator:
         logger.info(f"  Node [{node.id}] {node.name}")
         self.streamer.emit("node_start", {"node_id": node.id, "name": node.name})
 
+        try:
+            self._execute_node_inner(node, graph)
+        except Exception as e:
+            logger.error(f"  Node [{node.id}] crashed during execution: {e}")
+            node.state = NodeState.FAILED
+            node.result = NodeResult(
+                success=False,
+                error=str(e),
+            )
+            self.streamer.emit("node_complete", {"node_id": node.id, "success": False, "error": str(e)})
+
+    def _execute_node_inner(self, node: Node, graph: ExecutionGraph) -> None:
         # ── Pre-validation ───────────────────────────────
         pre_conditions = [
             Condition(name=f"precond_{i}", check=pc)
