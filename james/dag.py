@@ -21,6 +21,7 @@ from typing import Any, Callable, Optional
 
 class NodeState(Enum):
     """Execution state of a DAG node."""
+
     PENDING = "pending"
     READY = "ready"
     RUNNING = "running"
@@ -33,6 +34,7 @@ class NodeState(Enum):
 @dataclass
 class NodeResult:
     """Result of executing a single DAG node."""
+
     success: bool
     output: Any = None
     error: Optional[str] = None
@@ -60,6 +62,7 @@ class Node:
         metadata:       Arbitrary key-value metadata
         retry_limit:    Max retry attempts on transient failure
     """
+
     id: str = field(default_factory=lambda: str(uuid.uuid4())[:8])
     name: str = ""
     action: Any = None  # Callable, command string, or structured dict
@@ -98,12 +101,15 @@ class Node:
                 "duration_ms": self.result.duration_ms,
                 "layer_used": self.result.layer_used,
                 "attempts": self.result.attempts,
-            } if self.result else None,
+            }
+            if self.result
+            else None,
         }
 
 
 class CycleDetectedError(Exception):
     """Raised when a cycle is found in the DAG."""
+
     pass
 
 
@@ -121,6 +127,7 @@ class ExecutionGraph:
         self.nodes: dict[str, Node] = {}
         self.created_at = time.time()
         self.completed_at: Optional[float] = None
+        self._topological_order: Optional[list[str]] = None
 
     # ── Node Management ──────────────────────────────────────────
 
@@ -129,6 +136,7 @@ class ExecutionGraph:
         if node.id in self.nodes:
             raise ValueError(f"Duplicate node ID: {node.id}")
         self.nodes[node.id] = node
+        self._topological_order = None
         return node
 
     def add_dependency(self, from_id: str, to_id: str) -> None:
@@ -139,6 +147,7 @@ class ExecutionGraph:
             raise KeyError(f"Target node not found: {to_id}")
         if from_id not in self.nodes[to_id].dependencies:
             self.nodes[to_id].dependencies.append(from_id)
+            self._topological_order = None
 
     def get_node(self, node_id: str) -> Node:
         """Get node by ID."""
@@ -157,6 +166,9 @@ class ExecutionGraph:
         Returns node IDs in topological order.
         Raises CycleDetectedError if graph contains cycles.
         """
+        if self._topological_order is not None:
+            return self._topological_order
+
         adj: dict[str, list[str]] = {nid: [] for nid in self.nodes}
         in_deg: dict[str, int] = {nid: 0 for nid in self.nodes}
 
@@ -183,6 +195,7 @@ class ExecutionGraph:
                 f"visited {len(order)}/{len(self.nodes)} nodes"
             )
 
+        self._topological_order = order
         return order
 
     def update_skipped_nodes(self) -> None:
@@ -199,12 +212,16 @@ class ExecutionGraph:
                     for dep_id in node.dependencies:
                         if dep_id in self.nodes:
                             dep_state = self.nodes[dep_id].state
-                            if dep_state in (NodeState.FAILED, NodeState.SKIPPED, NodeState.ROLLED_BACK):
+                            if dep_state in (
+                                NodeState.FAILED,
+                                NodeState.SKIPPED,
+                                NodeState.ROLLED_BACK,
+                            ):
                                 node.state = NodeState.SKIPPED
                                 node.result = NodeResult(
                                     success=False,
                                     error=f"Dependency '{dep_id}' failed or was skipped",
-                                    metadata={"skipped_due_to_dependency": dep_id}
+                                    metadata={"skipped_due_to_dependency": dep_id},
                                 )
                                 changed = True
                                 break
