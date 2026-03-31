@@ -1,8 +1,14 @@
 import unittest
 import os
-import shutil
-from james.orchestrator import Orchestrator
-from james.evolution.expander import GapAnalysis
+import sys
+from unittest.mock import MagicMock
+
+sys.modules['numpy'] = MagicMock()
+sys.modules['flask'] = MagicMock()
+sys.modules['requests'] = MagicMock()
+
+from james.orchestrator import Orchestrator  # noqa: E402
+from james.evolution.expander import GapAnalysis  # noqa: E402
 
 class TestExpander(unittest.TestCase):
     def setUp(self):
@@ -17,6 +23,10 @@ class TestExpander(unittest.TestCase):
             return f"def _tool_{name}(**kwargs) -> dict:\n    return {{'success': True, 'msg': 'hello world'}}"
 
         self.expander.generate_tool = mock_generate_tool
+
+        # Use sandbox safely validate
+        # We need to make sure the tool code doesn't get rejected
+        code = self.expander.generate_tool(tool_name, "do something cool")
 
         gap = GapAnalysis(
             task="do something cool",
