@@ -15,7 +15,6 @@ import logging
 import os
 import subprocess
 import time
-from typing import Any
 
 from james.layers import ControlLayer, LayerLevel, LayerResult
 
@@ -137,8 +136,8 @@ class EnvironmentalLayer(ControlLayer):
             return LayerResult(success=False, error="No package specified")
 
         result = subprocess.run(
-            f"winget install --id {package} --accept-package-agreements --accept-source-agreements --silent",
-            shell=True, capture_output=True, text=True, timeout=300,
+            ["winget", "install", "--id", package, "--accept-package-agreements", "--accept-source-agreements", "--silent"],
+            shell=False, capture_output=True, text=True, timeout=300,
         )
         return LayerResult(
             success=result.returncode == 0,
