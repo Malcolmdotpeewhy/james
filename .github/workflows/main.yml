@@ -1,0 +1,27 @@
+name: Auto Merge PRs
+
+on:
+  schedule:
+    - cron: "*/15 * * * *"   # every 15 minutes
+  workflow_dispatch:
+
+permissions:
+  contents: write
+  pull-requests: write
+
+jobs:
+  automerge:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Auto-merge PRs
+        uses: pascalgn/automerge-action@v0.16.3
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          MERGE_METHOD: merge      # merge | squash | rebase
+          UPDATE_METHOD: rebase
+          MERGE_LABELS: ""         # empty = merge all eligible
+          MERGE_FILTER_AUTHOR: ""  # optional
+          MERGE_FORKS: "true"
+          DELETE_BRANCH_AFTER_MERGE: "true"

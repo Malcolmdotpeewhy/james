@@ -84,6 +84,95 @@ class PlanValidator:
             self._tool_names = {t["name"] for t in self._tools.list_tools()}
         return self._tool_names or set()
 
+    def _check_safety(
+        self,
+        action_type: str,
+        target: str,
+        kwargs: Any,
+        step_label: str,
+        errors: list[str],
+        warnings: list[str],
+    ) -> None:
+        """Pass 2: Safety checks."""
+        # 2a. Dangerous command patterns
+        if action_type in ("command", "powershell") and target:
+            for pattern in self.DANGEROUS_PATTERNS:
+                if re.search(pattern, target, re.IGNORECASE):
+                    errors.append(
+                        f"{step_label}: BLOCKED dangerous command matching "
+                        f"pattern '{pattern}' in target: '{target[:80]}'"
+                    )
+                    break
+
+        # 2b. Blocked file paths
+        if action_type in ("file_read", "file_write", "file_delete") and target:
+            for path_pattern in self.BLOCKED_PATHS:
+                if re.search(path_pattern, target, re.IGNORECASE):
+                    errors.append(
+                        f"{step_label}: BLOCKED access to protected path: '{target[:80]}'"
+                    )
+                    break
+
+        # 2c. Path traversal in kwargs
+        if isinstance(kwargs, dict):
+            for key, val in kwargs.items():
+                if isinstance(val, str) and ".." in val:
+                    warnings.append(
+                        f"{step_label}: Potential path traversal in kwarg '{key}': '{val[:60]}'"
+                    )
+
+    def _check_semantics(
+        self,
+        step: dict,
+        action: dict,
+        action_type: str,
+        target: str,
+        step_label: str,
+        i: int,
+        errors: list[str],
+        warnings: list[str],
+    ) -> int:
+        """Pass 3: Semantic checks."""
+        corrections = 0
+
+        # 3a. Tool existence
+        if action_type == "tool_call" and target and self.tool_names:
+            if target not in self.tool_names:
+                # Try fuzzy match for helpful error message
+                close = [t for t in self.tool_names if target in t or t in target]
+                hint = f" Did you mean: {close[:3]}?" if close else ""
+                errors.append(
+                    f"{step_label}: Unknown tool '{target}'.{hint}"
+                )
+
+        # 3b. Layer auto-correction
+        current_layer = step.get("layer")
+        if action_type in self.LAYER_1_TYPES:
+            if current_layer is not None and current_layer != 1:
+                warnings.append(
+                    f"{step_label}: '{action_type}' should use layer 1, got {current_layer}. Auto-correcting."
+                )
+                step["layer"] = 1
+                corrections += 1
+            elif current_layer is None:
+                step["layer"] = 1
+                corrections += 1
+
+        # 3c. Missing kwargs for tool_call
+        if action_type == "tool_call" and "kwargs" not in action:
+            warnings.append(
+                f"{step_label}: Missing 'kwargs' for tool_call. Adding empty dict."
+            )
+            action["kwargs"] = {}
+            corrections += 1
+
+        # 3d. Validate step has a name
+        if not step.get("name"):
+            step["name"] = f"step_{i + 1}"
+            corrections += 1
+
+        return corrections
+
     def validate(self, plan: dict) -> ValidationResult:
         """
         Run all validation passes on a plan. Returns ValidationResult.
@@ -119,71 +208,8 @@ class PlanValidator:
                 errors.append(f"{step_label}: Missing 'action.type'")
                 continue
 
-            # ── Pass 2: Safety checks ────────────────────────
-            # 2a. Dangerous command patterns
-            if action_type in ("command", "powershell") and target:
-                for pattern in self.DANGEROUS_PATTERNS:
-                    if re.search(pattern, target, re.IGNORECASE):
-                        errors.append(
-                            f"{step_label}: BLOCKED dangerous command matching "
-                            f"pattern '{pattern}' in target: '{target[:80]}'"
-                        )
-                        break
-
-            # 2b. Blocked file paths
-            if action_type in ("file_read", "file_write", "file_delete") and target:
-                for path_pattern in self.BLOCKED_PATHS:
-                    if re.search(path_pattern, target, re.IGNORECASE):
-                        errors.append(
-                            f"{step_label}: BLOCKED access to protected path: '{target[:80]}'"
-                        )
-                        break
-
-            # 2c. Path traversal in kwargs
-            kwargs = action.get("kwargs", {})
-            if isinstance(kwargs, dict):
-                for key, val in kwargs.items():
-                    if isinstance(val, str) and ".." in val:
-                        warnings.append(
-                            f"{step_label}: Potential path traversal in kwarg '{key}': '{val[:60]}'"
-                        )
-
-            # ── Pass 3: Semantic checks ──────────────────────
-            # 3a. Tool existence
-            if action_type == "tool_call" and target and self.tool_names:
-                if target not in self.tool_names:
-                    # Try fuzzy match for helpful error message
-                    close = [t for t in self.tool_names if target in t or t in target]
-                    hint = f" Did you mean: {close[:3]}?" if close else ""
-                    errors.append(
-                        f"{step_label}: Unknown tool '{target}'.{hint}"
-                    )
-
-            # 3b. Layer auto-correction
-            current_layer = step.get("layer")
-            if action_type in self.LAYER_1_TYPES:
-                if current_layer is not None and current_layer != 1:
-                    warnings.append(
-                        f"{step_label}: '{action_type}' should use layer 1, got {current_layer}. Auto-correcting."
-                    )
-                    step["layer"] = 1
-                    corrections += 1
-                elif current_layer is None:
-                    step["layer"] = 1
-                    corrections += 1
-
-            # 3c. Missing kwargs for tool_call
-            if action_type == "tool_call" and "kwargs" not in action:
-                warnings.append(
-                    f"{step_label}: Missing 'kwargs' for tool_call. Adding empty dict."
-                )
-                action["kwargs"] = {}
-                corrections += 1
-
-            # 3d. Validate step has a name
-            if not step.get("name"):
-                step["name"] = f"step_{i + 1}"
-                corrections += 1
+            self._check_safety(action_type, target, action.get("kwargs", {}), step_label, errors, warnings)
+            corrections += self._check_semantics(step, action, action_type, target, step_label, i, errors, warnings)
 
         is_valid = len(errors) == 0
 
