@@ -149,48 +149,14 @@ class ExecutionGraph:
     # ── Graph Analysis ───────────────────────────────────────────
 
     def _validate_no_cycles(self) -> None:
-        """Kahn's algorithm for cycle detection."""
-        in_degree: dict[str, int] = {nid: 0 for nid in self.nodes}
-        for node in self.nodes.values():
-            for dep in node.dependencies:
-                if dep in in_degree:
-                    # dep -> node, so node has in_degree from dep
-                    pass
-            # Actually compute: for each node, its dependencies are incoming edges
-        # Rebuild adjacency for Kahn's: edge from dep -> node
-        adj: dict[str, list[str]] = {nid: [] for nid in self.nodes}
-        in_deg: dict[str, int] = {nid: 0 for nid in self.nodes}
-
-        for node in self.nodes.values():
-            for dep_id in node.dependencies:
-                if dep_id in self.nodes:
-                    adj[dep_id].append(node.id)
-                    in_deg[node.id] += 1
-
-        queue = deque([nid for nid, deg in in_deg.items() if deg == 0])
-        visited = 0
-
-        while queue:
-            nid = queue.popleft()
-            visited += 1
-            for neighbor in adj[nid]:
-                in_deg[neighbor] -= 1
-                if in_deg[neighbor] == 0:
-                    queue.append(neighbor)
-
-        if visited != len(self.nodes):
-            raise CycleDetectedError(
-                f"Cycle detected in graph '{self.name}': "
-                f"visited {visited}/{len(self.nodes)} nodes"
-            )
+        """Kahn's algorithm for cycle detection (delegated to topological_sort)."""
+        self.topological_sort()
 
     def topological_sort(self) -> list[str]:
         """
         Returns node IDs in topological order.
         Raises CycleDetectedError if graph contains cycles.
         """
-        self._validate_no_cycles()
-
         adj: dict[str, list[str]] = {nid: [] for nid in self.nodes}
         in_deg: dict[str, int] = {nid: 0 for nid in self.nodes}
 
@@ -210,6 +176,12 @@ class ExecutionGraph:
                 in_deg[neighbor] -= 1
                 if in_deg[neighbor] == 0:
                     queue.append(neighbor)
+
+        if len(order) != len(self.nodes):
+            raise CycleDetectedError(
+                f"Cycle detected in graph '{self.name}': "
+                f"visited {len(order)}/{len(self.nodes)} nodes"
+            )
 
         return order
 
