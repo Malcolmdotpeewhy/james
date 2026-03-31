@@ -2,6 +2,7 @@
 JAMES Unit Tests — Verification Engine
 """
 import pytest
+from unittest.mock import patch
 from james.verification import (
     Condition, VerificationEngine, VerificationStatus,
     file_exists_condition, directory_exists_condition, command_available_condition,
@@ -78,6 +79,15 @@ class TestVerificationEngine:
         assert result.checks_total == 1
         assert result.status == VerificationStatus.PASS
 
+    def test_global_postconditions(self):
+        engine = VerificationEngine()
+        engine.add_global_postcondition(
+            Condition(name="global_post", check=lambda: True)
+        )
+        result = engine.verify_postconditions([])
+        assert result.checks_total == 1
+        assert result.status == VerificationStatus.PASS
+
     def test_monitor_execution_success(self):
         ok, output, error, duration = VerificationEngine.monitor_execution(
             lambda: "hello"
@@ -130,5 +140,4 @@ class TestPrebuiltConditions:
     def test_command_available(self):
         cond = command_available_condition("python")
         passed, _ = cond.evaluate()
-        # python should be on PATH in the test environment
-        assert isinstance(passed, bool)
+        assert passed is False

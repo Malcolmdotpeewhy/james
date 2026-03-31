@@ -30,6 +30,15 @@ logger = logging.getLogger("james.scheduler")
 
 
 @dataclass
+class TaskSchedule:
+    """Configuration for a scheduled task."""
+    schedule_type: str = "once"
+    interval_seconds: Optional[int] = None
+    delay_seconds: Optional[int] = None
+    run_at: Optional[float] = None
+
+
+@dataclass
 class ScheduledTask:
     """Represents a task in the scheduler queue."""
     id: str
@@ -151,10 +160,7 @@ class TaskScheduler:
         self,
         name: str,
         task: str,
-        schedule_type: str = "once",
-        interval_seconds: Optional[int] = None,
-        delay_seconds: Optional[int] = None,
-        run_at: Optional[float] = None,
+        schedule: Optional[TaskSchedule] = None,
     ) -> str:
         """
         Add a new scheduled task.
@@ -162,22 +168,22 @@ class TaskScheduler:
         Args:
             name: Human-readable task name.
             task: Command string or task description to execute.
-            schedule_type: "once" for one-shot, "interval" for recurring.
-            interval_seconds: Repeat interval (required for "interval" type).
-            delay_seconds: Run after this many seconds from now.
-            run_at: Specific Unix timestamp to run at (overrides delay_seconds).
+            schedule: The task scheduling configuration object.
 
         Returns:
             Task ID string.
         """
+        if schedule is None:
+            schedule = TaskSchedule()
+
         task_id = f"sched_{uuid.uuid4().hex[:12]}"
 
-        if run_at:
-            next_run = run_at
-        elif delay_seconds:
-            next_run = time.time() + delay_seconds
-        elif interval_seconds:
-            next_run = time.time() + interval_seconds
+        if schedule.run_at:
+            next_run = schedule.run_at
+        elif schedule.delay_seconds:
+            next_run = time.time() + schedule.delay_seconds
+        elif schedule.interval_seconds:
+            next_run = time.time() + schedule.interval_seconds
         else:
             next_run = time.time()  # Run immediately on next poll
 
@@ -187,14 +193,14 @@ class TaskScheduler:
                 "(id, name, task, schedule_type, interval_seconds, "
                 "next_run, last_run, last_result, enabled, created_at, run_count) "
                 "VALUES (?, ?, ?, ?, ?, ?, NULL, NULL, 1, ?, 0)",
-                (task_id, name, task, schedule_type, interval_seconds,
+                (task_id, name, task, schedule.schedule_type, schedule.interval_seconds,
                  next_run, time.time()),
             )
             conn.commit()
 
         run_time = datetime.fromtimestamp(next_run).strftime("%H:%M:%S")
         logger.info(
-            f"Scheduler: added '{name}' ({schedule_type}, "
+            f"Scheduler: added '{name}' ({schedule.schedule_type}, "
             f"next_run={run_time}) → {task_id}"
         )
         return task_id
@@ -362,12 +368,12 @@ class TaskScheduler:
 
             # Record in audit
             if hasattr(self.orch, "audit"):
-                from james.security import OpClass
-                self.orch.audit.record(
-                    "scheduled_task_executed",
-                    OpClass.SAFE,
+                from james.security import AuditEntry, OpClass
+                self.orch.audit.record(AuditEntry(
+                    operation="scheduled_task_executed",
+                    classification=OpClass.SAFE,
                     details=f"'{name}': {result}",
-                )
+                ))
 
             return result
 

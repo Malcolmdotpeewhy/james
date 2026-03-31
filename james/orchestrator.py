@@ -15,21 +15,21 @@ import logging
 import os
 import time
 from pathlib import Path
-from typing import Any, Callable, Optional
+from typing import Any, Optional
 
 from james.ai.plan_validator import PlanValidator
 from james.dag import ExecutionGraph, Node, NodeResult, NodeState
-from james.failure import FailureClassifier, FailureTracker
+from james.failure import FailureTracker
 from james.layers import LayerLevel, LayerRegistry
 from james.layers.native import NativeLayer
 from james.layers.application import ApplicationLayer
 from james.layers.ui_cognitive import UICognitiveLayer
 from james.layers.synthetic import SyntheticLayer
 from james.layers.environmental import EnvironmentalLayer
-from james.memory.store import MemoryStore
+from james.memory.store import MemoryStore, ExecutionMetric
 from james.optimizer import Optimizer
-from james.security import AuditLog, OpClass, RestorePointManager, SecurityPolicy
-from james.skills.skill import Skill, SkillStore
+from james.security import AuditEntry, AuditLog, OpClass, RestorePointManager, SecurityPolicy
+from james.skills.skill import SkillStore
 from james.verification import Condition, VerificationEngine
 
 logger = logging.getLogger("james.orchestrator")
@@ -106,7 +106,7 @@ class Orchestrator:
         )
 
         # Task Scheduler
-        from james.scheduler import TaskScheduler
+        from james.scheduler import TaskScheduler, TaskSchedule
         self.scheduler = TaskScheduler(
             db_path=os.path.join(self._james_dir, "memory", "scheduler.db"),
             orchestrator=self,
@@ -213,8 +213,10 @@ class Orchestrator:
         self.scheduler.add_task(
             name="Auto-Prune Tools",
             task=_json.dumps(prune_task),
-            schedule_type="interval",
-            interval_seconds=86400
+            schedule=TaskSchedule(
+                schedule_type="interval",
+                interval_seconds=86400
+            )
         )
 
         # ── Phase 6 ────────────────────────────────────────────────
@@ -347,10 +349,11 @@ class Orchestrator:
                 logger.info(
                     f"AI planned {len(plan['steps'])} steps: {result.get('reasoning', '')[:100]}"
                 )
-                self.audit.record(
-                    "ai_plan", OpClass.SAFE,
+                self.audit.record(AuditEntry(
+                    operation="ai_plan",
+                    classification=OpClass.SAFE,
                     details=f"AI decomposed into {len(plan['steps'])} steps",
-                )
+                ))
                 # Store the original description for post-execution learning
                 self.memory.st_set("_ai_task_description", description)
                 return self._plan_from_dict(plan)
@@ -370,7 +373,19 @@ class Orchestrator:
             "available_layers": self.layers.available_count,
         }
 
-        # ── Inject available tools (AI can use tool_call action type) ──
+        self._inject_tools_context(context)
+        self._inject_skills_context(context, task_description)
+        self._inject_system_map_context(context)
+        self._inject_ltm_context(context)
+        self._inject_execution_history_context(context)
+        self._inject_recent_failures_context(context)
+        self._inject_relevant_memories_context(context, task_description)
+        self._inject_rag_context(context, task_description)
+
+        return context
+
+    def _inject_tools_context(self, context: dict) -> None:
+        """Inject available tools (AI can use tool_call action type)."""
         try:
             tool_list = self.tools.list_tools()
             context["available_tools"] = [
@@ -380,7 +395,8 @@ class Orchestrator:
         except Exception:
             pass
 
-        # ── Inject relevant skills (the AI can reuse proven methods) ──
+    def _inject_skills_context(self, context: dict, task_description: str) -> None:
+        """Inject relevant skills (the AI can reuse proven methods)."""
         try:
             # Search for skills matching the task description
             matching_skills = self.skills.search(task_description)
@@ -409,7 +425,8 @@ class Orchestrator:
         except Exception:
             pass
 
-        # ── Inject system map (known tools and paths) ────────────
+    def _inject_system_map_context(self, context: dict) -> None:
+        """Inject system map (known tools and paths)."""
         try:
             system_tools = self.memory.map_list(category="tool")
             if system_tools:
@@ -419,7 +436,8 @@ class Orchestrator:
         except Exception:
             pass
 
-        # ── Inject recent Long-Term Memories (context facts) ─────
+    def _inject_ltm_context(self, context: dict) -> None:
+        """Inject recent Long-Term Memories (context facts)."""
         try:
             # Fetch recent general or project context saved by the AI
             ltm_facts = self.memory.lt_list(limit=20)
@@ -431,7 +449,8 @@ class Orchestrator:
         except Exception:
             pass
 
-        # ── Inject recent execution history (learns from past) ───
+    def _inject_execution_history_context(self, context: dict) -> None:
+        """Inject recent execution history (learns from past)."""
         try:
             recent_metrics = self.memory.get_metrics(limit=10)
             if recent_metrics:
@@ -448,7 +467,8 @@ class Orchestrator:
         except Exception:
             pass
 
-        # ── Inject recent failures (avoid repeating mistakes) ────
+    def _inject_recent_failures_context(self, context: dict) -> None:
+        """Inject recent failures (avoid repeating mistakes)."""
         try:
             failures = self.failures.get_history(limit=5)
             if failures:
@@ -463,7 +483,8 @@ class Orchestrator:
         except Exception:
             pass
 
-        # ── Inject semantically relevant memories (vector search) ─
+    def _inject_relevant_memories_context(self, context: dict, task_description: str) -> None:
+        """Inject semantically relevant memories (vector search)."""
         try:
             if self.vectors.count > 0:
                 vector_results = self.vectors.search(task_description, top_k=5)
@@ -492,7 +513,8 @@ class Orchestrator:
             except Exception:
                 pass
 
-        # ── Inject RAG document context ───────────────────────────
+    def _inject_rag_context(self, context: dict, task_description: str) -> None:
+        """Inject RAG document context."""
         try:
             if self.rag and self.rag._vector_store.count > 0:
                 rag_results = self.rag.get_context(task_description, top_k=3)
@@ -500,8 +522,6 @@ class Orchestrator:
                     context["relevant_documents"] = rag_results
         except Exception:
             pass
-
-        return context
 
     def _plan_from_dict(self, task: dict) -> ExecutionGraph:
         """Plan from a structured task dictionary."""
@@ -525,18 +545,20 @@ class Orchestrator:
                 )
                 graph.add_node(node)
                 self._active_graph = graph
-                self.audit.record(
-                    "plan_rejected", OpClass.DANGEROUS,
+                self.audit.record(AuditEntry(
+                    operation="plan_rejected",
+                    classification=OpClass.DANGEROUS,
                     details=f"Rejected '{name}': {'; '.join(vr.errors)[:300]}",
-                )
+                ))
                 return graph
             # Apply any auto-corrections from validation
             task = vr.corrected_plan
             if vr.warnings:
-                self.audit.record(
-                    "plan_warnings", OpClass.SAFE,
+                self.audit.record(AuditEntry(
+                    operation="plan_warnings",
+                    classification=OpClass.SAFE,
                     details=f"{len(vr.warnings)} warnings: {'; '.join(vr.warnings)[:300]}",
-                )
+                ))
 
         graph = ExecutionGraph(name=name)
 
@@ -583,14 +605,14 @@ class Orchestrator:
 
         logger.info(f"Executing graph: {graph.name} ({len(graph.nodes)} nodes)")
         self.streamer.emit("graph_start", {"id": graph.id, "name": graph.name, "nodes": len(graph.nodes)})
-        self.audit.record("graph_start", OpClass.SAFE, details=graph.name)
+        self.audit.record(AuditEntry(operation="graph_start", classification=OpClass.SAFE, details=graph.name))
 
         # Concurrent execution of ready nodes
         try:
             graph._validate_no_cycles()
         except Exception as e:
             logger.error(f"Graph validation failed: {e}")
-            self.audit.record("graph_error", OpClass.SAFE, details=str(e))
+            self.audit.record(AuditEntry(operation="graph_error", classification=OpClass.SAFE, details=str(e)))
             raise
 
         import concurrent.futures
@@ -599,6 +621,7 @@ class Orchestrator:
         with concurrent.futures.ThreadPoolExecutor(max_workers=10) as executor:
             futures = set()
             while True:
+                graph.update_skipped_nodes()
                 ready_nodes = graph.get_ready_nodes()
                 for node in ready_nodes:
                     node.state = NodeState.RUNNING  # Prevent picking it up again
@@ -629,10 +652,11 @@ class Orchestrator:
         done, total = graph.progress
         self.streamer.emit("graph_complete", {"id": graph.id, "success": not graph.has_failures, "done": done, "total": total})
         logger.info(f"Graph complete: {done}/{total} nodes, failures={graph.has_failures}")
-        self.audit.record(
-            "graph_complete", OpClass.SAFE,
+        self.audit.record(AuditEntry(
+            operation="graph_complete",
+            classification=OpClass.SAFE,
             details=f"{done}/{total} nodes, failures={graph.has_failures}",
-        )
+        ))
 
         # ── Post-execution learning ──────────────────────────
         self._post_execute_learn(graph)
@@ -675,11 +699,11 @@ class Orchestrator:
                     plugin_name = f"self_evolved_{target_tool}"
                     if hasattr(self, "plugins") and self.plugins.get_plugin(plugin_name):
                         logger.info(f"Dynamically generated tool '{target_tool}' produced a warning. Triggering Code Agent reflexivity.")
-                        self.audit.record(
-                            "code_agent_reflexivity_triggered",
-                            OpClass.SAFE,
+                        self.audit.record(AuditEntry(
+                            operation="code_agent_reflexivity_triggered",
+                            classification=OpClass.SAFE,
                             details=f"Tool '{target_tool}' triggered reflexivity due to warning: {out_str[:100]}"
-                        )
+                        ))
                         # Delegate task to Code Agent to evolve the tool
                         task = {
                             "name": f"Evolve Tool {target_tool}",
@@ -761,10 +785,11 @@ class Orchestrator:
                         self.skills.create(new_skill)
 
                         logger.info(f"  AI learned new skill: '{new_skill.id}' from successful execution")
-                        self.audit.record(
-                            "ai_skill_learned", OpClass.SAFE,
+                        self.audit.record(AuditEntry(
+                            operation="ai_skill_learned",
+                            classification=OpClass.SAFE,
                             details=f"Skill '{new_skill.id}': {new_skill.description[:100]}",
-                        )
+                        ))
 
                         # Record in meta-memory
                         self.memory.record_optimization(
@@ -782,6 +807,18 @@ class Orchestrator:
         logger.info(f"  Node [{node.id}] {node.name}")
         self.streamer.emit("node_start", {"node_id": node.id, "name": node.name})
 
+        try:
+            self._execute_node_inner(node, graph)
+        except Exception as e:
+            logger.error(f"  Node [{node.id}] crashed during execution: {e}")
+            node.state = NodeState.FAILED
+            node.result = NodeResult(
+                success=False,
+                error=str(e),
+            )
+            self.streamer.emit("node_complete", {"node_id": node.id, "success": False, "error": str(e)})
+
+    def _execute_node_inner(self, node: Node, graph: ExecutionGraph) -> None:
         # ── Pre-validation ───────────────────────────────
         pre_conditions = [
             Condition(name=f"precond_{i}", check=pc)
@@ -808,12 +845,13 @@ class Orchestrator:
                     f"  Node [{node.id}] requires confirmation (class={op_class.value}). "
                     "Skipping in autonomous mode."
                 )
-                self.audit.record(
-                    "node_blocked", op_class,
+                self.audit.record(AuditEntry(
+                    operation="node_blocked",
+                    classification=op_class,
                     node_id=node.id,
                     details=f"Blocked: {cmd_str[:100]}",
                     approved=False,
-                )
+                ))
                 node.state = NodeState.SKIPPED
                 node.result = NodeResult(
                     success=False,
@@ -844,11 +882,12 @@ class Orchestrator:
 
         # ── Execute with retry ───────────────────────────
         node.state = NodeState.RUNNING
-        self.audit.record(
-            f"node_execute", op_class,
+        self.audit.record(AuditEntry(
+            operation="node_execute",
+            classification=op_class,
             node_id=node.id,
             details=f"Layer={layer.level.value} Action={str(action)[:200]}",
-        )
+        ))
 
         attempts = 0
         current_layer = layer
@@ -882,12 +921,14 @@ class Orchestrator:
 
             # Record metric
             self.memory.record_metric(
-                node_id=node.id,
-                node_name=node.name,
-                success=result.success,
-                duration_ms=result.duration_ms,
-                layer=current_layer.level.value,
-                error=result.error,
+                ExecutionMetric(
+                    node_id=node.id,
+                    success=result.success,
+                    duration_ms=result.duration_ms,
+                    node_name=node.name,
+                    layer=current_layer.level.value,
+                    error=result.error,
+                )
             )
 
             if result.success:
@@ -926,7 +967,7 @@ class Orchestrator:
 
             # Try layer escalation on non-transient failures
             # NEVER escalate tool_call/noop — they only work on NativeLayer.
-            from james.failure import FailureType, RecoveryAction
+            from james.failure import RecoveryAction
             is_tool_action = action_type in ("tool_call", "noop")
             if not is_tool_action and RecoveryAction.ESCALATE_LAYER in failure.recovery_actions:
                 next_layer = self.layers.escalate(current_layer.level)
@@ -951,13 +992,9 @@ class Orchestrator:
             if recovery and recovery.get("recovered"):
                 # Recovery succeeded (e.g. missing package installed) — retry once
                 logger.info(f"  Auto-recovery succeeded ({recovery.get('action')}), retrying...")
-                result = current_layer.execute(
-                    action_type,
-                    target=node.action.get("target", ""),
-                    kwargs=node.action.get("kwargs", {}),
-                )
+                result = current_layer.execute(node.action)
                 if result and result.success:
-                    node.state = NodeState.COMPLETED
+                    node.state = NodeState.SUCCESS
                     node.result = NodeResult(
                         success=True,
                         output=result.output,
@@ -966,7 +1003,7 @@ class Orchestrator:
                         attempts=attempts + 1,
                         metadata={"auto_recovered": True, "recovery_action": recovery.get("action")},
                     )
-                    logger.info(f"  Node [{node.id}] COMPLETED after auto-recovery")
+                    logger.info(f"  Node [{node.id}] SUCCESS after auto-recovery")
                     self.streamer.emit("node_complete", {
                         "node_id": node.id, "success": True, 
                         "output": str(result.output)[:1000] if result.output else None,

@@ -12,7 +12,7 @@ import json
 import os
 import shutil
 import time
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from enum import Enum
 from pathlib import Path
 from typing import Any, Optional
@@ -70,13 +70,13 @@ _PRODUCTION_KEYWORDS = {
 @dataclass
 class AuditEntry:
     """Single audit log entry."""
-    timestamp: float
     operation: str
     classification: OpClass
-    node_id: str
-    details: str
-    approved: bool
-    user_confirmed: bool
+    timestamp: float = field(default_factory=time.time)
+    node_id: str = ""
+    details: str = ""
+    approved: bool = True
+    user_confirmed: bool = False
 
 
 class SecurityPolicy:
@@ -209,25 +209,8 @@ class AuditLog:
         if not self._path.exists():
             self._path.touch()
 
-    def record(
-        self,
-        operation: str,
-        classification: OpClass,
-        node_id: str = "",
-        details: str = "",
-        approved: bool = True,
-        user_confirmed: bool = False,
-    ) -> AuditEntry:
+    def record(self, entry: AuditEntry) -> AuditEntry:
         """Record an operation to the audit log."""
-        entry = AuditEntry(
-            timestamp=time.time(),
-            operation=operation,
-            classification=classification,
-            node_id=node_id,
-            details=details,
-            approved=approved,
-            user_confirmed=user_confirmed,
-        )
         line = json.dumps({
             "ts": entry.timestamp,
             "op": entry.operation,
