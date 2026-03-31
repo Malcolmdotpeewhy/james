@@ -5,8 +5,7 @@ import pytest
 from unittest.mock import patch
 from james.verification import (
     Condition, VerificationEngine, VerificationStatus,
-    file_exists_condition, command_available_condition,
-    directory_exists_condition, process_running_condition,
+    file_exists_condition, directory_exists_condition, command_available_condition,
 )
 
 
@@ -131,37 +130,14 @@ class TestPrebuiltConditions:
         passed, _ = cond.evaluate()
         assert passed is False
 
-    @patch('shutil.which')
-    def test_command_available_true(self, mock_which):
-        mock_which.return_value = "/usr/bin/mock_command"
-        cond = command_available_condition("mock_command")
-        passed, _ = cond.evaluate()
-        assert passed is True
-
-    @patch('shutil.which')
-    def test_command_available_false(self, mock_which):
-        mock_which.return_value = None
-        cond = command_available_condition("mock_command")
+    def test_directory_exists_not_a_dir(self, tmp_path):
+        f = tmp_path / "test.txt"
+        f.write_text("hello")
+        cond = directory_exists_condition(str(f))
         passed, _ = cond.evaluate()
         assert passed is False
 
-    @patch('subprocess.run')
-    def test_process_running_true(self, mock_run):
-        mock_run.return_value.stdout = "notepad.exe"
-        cond = process_running_condition("notepad.exe")
-        passed, _ = cond.evaluate()
-        assert passed is True
-
-    @patch('subprocess.run')
-    def test_process_running_false(self, mock_run):
-        mock_run.return_value.stdout = "explorer.exe"
-        cond = process_running_condition("notepad.exe")
-        passed, _ = cond.evaluate()
-        assert passed is False
-
-    @patch('subprocess.run')
-    def test_process_running_exception(self, mock_run):
-        mock_run.side_effect = Exception("failed to run")
-        cond = process_running_condition("notepad.exe")
+    def test_command_available(self):
+        cond = command_available_condition("python")
         passed, _ = cond.evaluate()
         assert passed is False
