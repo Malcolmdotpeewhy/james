@@ -595,6 +595,23 @@ class Orchestrator:
 
         for node_id in order:
             node = graph.get_node(node_id)
+
+            # Cascading failure check: Ensure all dependencies succeeded
+            failed_deps = []
+            for dep_id in node.dependencies:
+                if dep_id in graph.nodes and graph.nodes[dep_id].state != NodeState.SUCCESS:
+                    failed_deps.append(dep_id)
+
+            if failed_deps:
+                logger.warning(f"Skipping node '{node.name}' due to failed/skipped dependencies: {failed_deps}")
+                node.state = NodeState.SKIPPED
+                node.result = NodeResult(
+                    success=False,
+                    error=f"Skipped due to failed/skipped dependencies: {', '.join(failed_deps)}",
+                )
+                self.streamer.emit("node_complete", {"node_id": node.id, "success": False, "error": f"Skipped due to failed/skipped dependencies"})
+                continue
+
             self._execute_node(node, graph)
 
         graph.completed_at = time.time()
@@ -926,11 +943,7 @@ class Orchestrator:
             if recovery and recovery.get("recovered"):
                 # Recovery succeeded (e.g. missing package installed) — retry once
                 logger.info(f"  Auto-recovery succeeded ({recovery.get('action')}), retrying...")
-                result = current_layer.execute(
-                    action_type,
-                    target=node.action.get("target", ""),
-                    kwargs=node.action.get("kwargs", {}),
-                )
+                result = current_layer.execute(node.action)
                 if result and result.success:
                     node.state = NodeState.COMPLETED
                     node.result = NodeResult(
