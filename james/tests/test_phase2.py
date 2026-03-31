@@ -260,22 +260,27 @@ class TestTaskScheduler(unittest.TestCase):
         shutil.rmtree(self.tmpdir, ignore_errors=True)
 
     def test_add_task(self):
+        from james.scheduler import TaskSchedule
         task_id = self.scheduler.add_task(
             name="test_task",
             task="!echo hello",
-            schedule_type="once",
-            delay_seconds=60,
+            schedule=TaskSchedule(
+                schedule_type="once",
+                delay_seconds=60,
+            )
         )
         self.assertTrue(task_id.startswith("sched_"))
 
     def test_list_tasks(self):
-        self.scheduler.add_task(name="t1", task="!echo 1", delay_seconds=60)
-        self.scheduler.add_task(name="t2", task="!echo 2", delay_seconds=120)
+        from james.scheduler import TaskSchedule
+        self.scheduler.add_task(name="t1", task="!echo 1", schedule=TaskSchedule(delay_seconds=60))
+        self.scheduler.add_task(name="t2", task="!echo 2", schedule=TaskSchedule(delay_seconds=120))
         tasks = self.scheduler.list_tasks()
         self.assertEqual(len(tasks), 2)
 
     def test_cancel_task(self):
-        task_id = self.scheduler.add_task(name="cancel_me", task="!echo bye", delay_seconds=60)
+        from james.scheduler import TaskSchedule
+        task_id = self.scheduler.add_task(name="cancel_me", task="!echo bye", schedule=TaskSchedule(delay_seconds=60))
         self.assertTrue(self.scheduler.cancel_task(task_id))
         tasks = self.scheduler.list_tasks(include_disabled=False)
         self.assertEqual(len(tasks), 0)
@@ -284,7 +289,8 @@ class TestTaskScheduler(unittest.TestCase):
         self.assertFalse(self.scheduler.cancel_task("nonexistent_id"))
 
     def test_get_task(self):
-        task_id = self.scheduler.add_task(name="find_me", task="!echo found", delay_seconds=60)
+        from james.scheduler import TaskSchedule
+        task_id = self.scheduler.add_task(name="find_me", task="!echo found", schedule=TaskSchedule(delay_seconds=60))
         task = self.scheduler.get_task(task_id)
         self.assertIsNotNone(task)
         self.assertEqual(task.name, "find_me")
@@ -295,12 +301,14 @@ class TestTaskScheduler(unittest.TestCase):
         self.assertIsNone(self.scheduler.get_task("no_such_id"))
 
     def test_delete_task(self):
-        task_id = self.scheduler.add_task(name="delete_me", task="!echo gone", delay_seconds=60)
+        from james.scheduler import TaskSchedule
+        task_id = self.scheduler.add_task(name="delete_me", task="!echo gone", schedule=TaskSchedule(delay_seconds=60))
         self.assertTrue(self.scheduler.delete_task(task_id))
         self.assertIsNone(self.scheduler.get_task(task_id))
 
     def test_status(self):
-        self.scheduler.add_task(name="status_test", task="!echo status", delay_seconds=60)
+        from james.scheduler import TaskSchedule
+        self.scheduler.add_task(name="status_test", task="!echo status", schedule=TaskSchedule(delay_seconds=60))
         status = self.scheduler.status()
         self.assertIn("running", status)
         self.assertIn("total_tasks", status)
@@ -309,7 +317,8 @@ class TestTaskScheduler(unittest.TestCase):
         self.assertEqual(status["active_tasks"], 1)
 
     def test_task_to_dict(self):
-        task_id = self.scheduler.add_task(name="dict_test", task="!echo dict", delay_seconds=300)
+        from james.scheduler import TaskSchedule
+        task_id = self.scheduler.add_task(name="dict_test", task="!echo dict", schedule=TaskSchedule(delay_seconds=300))
         task = self.scheduler.get_task(task_id)
         d = task.to_dict()
         self.assertEqual(d["name"], "dict_test")
@@ -317,7 +326,7 @@ class TestTaskScheduler(unittest.TestCase):
         self.assertIn("interval_human", d)
 
     def test_interval_human_readable(self):
-        from james.scheduler import ScheduledTask
+        from james.scheduler import ScheduledTask, TaskSchedule
         task = ScheduledTask(
             id="test", name="test", task="test", schedule_type="interval",
             interval_seconds=3600, next_run=0, last_run=None,
@@ -338,11 +347,14 @@ class TestTaskScheduler(unittest.TestCase):
         self.assertFalse(self.scheduler.is_running)
 
     def test_recurring_task_created(self):
+        from james.scheduler import TaskSchedule
         task_id = self.scheduler.add_task(
             name="recurring",
             task="!echo recurring",
-            schedule_type="interval",
-            interval_seconds=120,
+            schedule=TaskSchedule(
+                schedule_type="interval",
+                interval_seconds=120,
+            )
         )
         task = self.scheduler.get_task(task_id)
         self.assertEqual(task.schedule_type, "interval")

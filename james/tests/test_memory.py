@@ -7,7 +7,7 @@ import shutil
 import tempfile
 
 import pytest
-from james.memory.store import MemoryStore
+from james.memory.store import ExecutionMetric, MemoryStore
 
 
 @pytest.fixture
@@ -86,22 +86,22 @@ class TestLongTermMemory:
 
 class TestMetrics:
     def test_record_and_retrieve(self, memory):
-        memory.record_metric("n1", True, 42.0, node_name="test", layer=1)
+        memory.record_metric(ExecutionMetric(node_id="n1", success=True, duration_ms=42.0, node_name="test", layer=1))
         metrics = memory.get_metrics(node_id="n1")
         assert len(metrics) == 1
         assert metrics[0]["success"] == 1
         assert metrics[0]["duration_ms"] == 42.0
 
     def test_success_rate(self, memory):
-        memory.record_metric("n1", True, 10)
-        memory.record_metric("n1", True, 20)
-        memory.record_metric("n1", False, 30)
+        memory.record_metric(ExecutionMetric(node_id="n1", success=True, duration_ms=10))
+        memory.record_metric(ExecutionMetric(node_id="n1", success=True, duration_ms=20))
+        memory.record_metric(ExecutionMetric(node_id="n1", success=False, duration_ms=30))
         rate = memory.get_success_rate("n1")
         assert abs(rate - 0.6667) < 0.01
 
     def test_avg_duration(self, memory):
-        memory.record_metric("n1", True, 100)
-        memory.record_metric("n1", True, 200)
+        memory.record_metric(ExecutionMetric(node_id="n1", success=True, duration_ms=100))
+        memory.record_metric(ExecutionMetric(node_id="n1", success=True, duration_ms=200))
         avg = memory.get_avg_duration("n1")
         assert avg == 150.0
 
@@ -141,7 +141,7 @@ class TestStats:
     def test_stats(self, memory):
         memory.st_set("active", True)
         memory.lt_set("config", {})
-        memory.record_metric("n1", True, 10)
+        memory.record_metric(ExecutionMetric(node_id="n1", success=True, duration_ms=10))
         memory.record_optimization("s1", "test", 0.5, 0.6)
         memory.map_set("tool", "/path")
 

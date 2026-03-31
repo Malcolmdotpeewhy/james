@@ -419,12 +419,12 @@ Return ONLY the valid Python code, no markdown or text wrappers. Do not wrap cod
         self._generation_timestamps = [t for t in self._generation_timestamps if now - t < 3600]
         if len(self._generation_timestamps) >= self.MAX_TOOLS_PER_HOUR:
             if self.orch and hasattr(self.orch, "audit"):
-                from james.security import OpClass
-                self.orch.audit.record(
-                    "tool_generation_rate_limit",
-                    OpClass.SAFE,
+                from james.security import AuditEntry, OpClass
+                self.orch.audit.record(AuditEntry(
+                    operation="tool_generation_rate_limit",
+                    classification=OpClass.SAFE,
                     details=f"Rate limit exceeded (max {self.MAX_TOOLS_PER_HOUR}/hour). Blocked generating '{tool_name}'."
-                )
+                ))
             logger.warning(f"Tool generation rate limit exceeded. Blocked generating '{tool_name}'.")
             return {
                 "recovered": False,
@@ -532,12 +532,12 @@ Return ONLY the valid Python code, no markdown or text wrappers. Do not wrap cod
                 logger.info(f"Successfully registered auto-generated tool '{tool_name}' via plugin '{plugin_name}'")
 
                 if self.orch and hasattr(self.orch, "audit"):
-                    from james.security import OpClass
-                    self.orch.audit.record(
-                        "tool_generated",
-                        OpClass.SAFE,
+                    from james.security import AuditEntry, OpClass
+                    self.orch.audit.record(AuditEntry(
+                        operation="tool_generated",
+                        classification=OpClass.SAFE,
                         details=f"Successfully generated tool '{tool_name}' via plugin '{plugin_name}'."
-                    )
+                    ))
 
                 return {
                     "recovered": True,
@@ -604,12 +604,12 @@ Return ONLY the valid Python code, no markdown or text wrappers. Do not wrap cod
                                 logger.info(f"Pruned old self-evolved tool: {item}")
 
                                 if hasattr(self.orch, "audit"):
-                                    from james.security import OpClass
-                                    self.orch.audit.record(
-                                        "tool_pruned",
-                                        OpClass.SAFE,
+                                    from james.security import AuditEntry, OpClass
+                                    self.orch.audit.record(AuditEntry(
+                                        operation="tool_pruned",
+                                        classification=OpClass.SAFE,
                                         details=f"Pruned tool plugin '{item}' older than {days_old} days."
-                                    )
+                                    ))
 
             return {
                 "status": "success",

@@ -50,6 +50,32 @@ class TestFileWatcher(unittest.TestCase):
         self.watcher.stop()
         self.assertFalse(self.watcher.is_running)
 
+    def test_start_idempotent(self):
+        self.watcher.start()
+        thread1 = self.watcher._thread
+        self.assertTrue(self.watcher.is_running)
+        self.assertTrue(thread1.daemon)
+        self.assertEqual(thread1.name, "james-watcher")
+
+        self.watcher.start()
+        thread2 = self.watcher._thread
+        self.assertIs(thread1, thread2)
+
+    def test_start_recreates_dead_thread(self):
+        self.watcher.start()
+        thread1 = self.watcher._thread
+
+        # Manually stop the thread
+        self.watcher._stop_event.set()
+        thread1.join(timeout=5)
+        self.assertFalse(thread1.is_alive())
+
+        # Start again, should create a new thread
+        self.watcher.start()
+        thread2 = self.watcher._thread
+        self.assertTrue(thread2.is_alive())
+        self.assertIsNot(thread1, thread2)
+
     def test_glob_pattern(self):
         rule_id = self.watcher.watch(
             self.tmpdir, task="!echo py changed", patterns=["*.py"]
@@ -102,6 +128,31 @@ class TestConversationStore(unittest.TestCase):
     def tearDown(self):
         import shutil
         shutil.rmtree(self.tmpdir, ignore_errors=True)
+
+    def test_save_message(self):
+        # 1) First message: Should create new conversation, message_count = 1
+        msg_id1 = self.store.save_message("test_conv", "user", "Hello!")
+        self.assertIsInstance(msg_id1, int)
+        self.assertGreater(msg_id1, 0)
+
+        info1 = self.store.get_conversation_info("test_conv")
+        self.assertIsNotNone(info1)
+        self.assertEqual(info1["message_count"], 1)
+        self.assertEqual(info1["created_at"], info1["updated_at"])
+
+        # Sleep slightly to ensure `time.time()` updates
+        time.sleep(0.01)
+
+        # 2) Second message: Should update existing conversation
+        msg_id2 = self.store.save_message("test_conv", "assistant", "Hi there!", metadata={"key": "val"})
+        self.assertIsInstance(msg_id2, int)
+        self.assertGreater(msg_id2, msg_id1)
+
+        info2 = self.store.get_conversation_info("test_conv")
+        self.assertIsNotNone(info2)
+        self.assertEqual(info2["message_count"], 2)
+        self.assertEqual(info2["created_at"], info1["created_at"])
+        self.assertGreater(info2["updated_at"], info1["updated_at"])
 
     def test_save_and_get(self):
         self.store.save_message("test", "user", "Hello!")

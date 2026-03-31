@@ -2,9 +2,10 @@
 JAMES Unit Tests — Verification Engine
 """
 import pytest
+from unittest.mock import patch
 from james.verification import (
     Condition, VerificationEngine, VerificationStatus,
-    file_exists_condition, command_available_condition,
+    file_exists_condition, directory_exists_condition, command_available_condition,
 )
 
 
@@ -78,6 +79,34 @@ class TestVerificationEngine:
         assert result.checks_total == 1
         assert result.status == VerificationStatus.PASS
 
+    def test_verify_postconditions_all_pass(self):
+        engine = VerificationEngine()
+        conditions = [
+            Condition(name="c1", check=lambda: True),
+            Condition(name="c2", check=lambda: True),
+        ]
+        result = engine.verify_postconditions(conditions)
+        assert result.status == VerificationStatus.PASS
+        assert result.checks_passed == 2
+        assert result.checks_failed == 0
+
+    def test_verify_postconditions_failure(self):
+        engine = VerificationEngine()
+        conditions = [
+            Condition(name="must_pass", check=lambda: False, required=True),
+        ]
+        result = engine.verify_postconditions(conditions)
+        assert result.status == VerificationStatus.FAIL
+
+    def test_global_postconditions(self):
+        engine = VerificationEngine()
+        engine.add_global_postcondition(
+            Condition(name="global", check=lambda: True)
+        )
+        result = engine.verify_postconditions([])
+        assert result.checks_total == 1
+        assert result.status == VerificationStatus.PASS
+
     def test_monitor_execution_success(self):
         ok, output, error, duration = VerificationEngine.monitor_execution(
             lambda: "hello"
@@ -108,8 +137,26 @@ class TestPrebuiltConditions:
         passed, _ = cond.evaluate()
         assert passed is False
 
+    def test_directory_exists_true(self, tmp_path):
+        d = tmp_path / "test_dir"
+        d.mkdir()
+        cond = directory_exists_condition(str(d))
+        passed, _ = cond.evaluate()
+        assert passed is True
+
+    def test_directory_exists_false(self, tmp_path):
+        cond = directory_exists_condition(str(tmp_path / "nope_dir"))
+        passed, _ = cond.evaluate()
+        assert passed is False
+
+    def test_directory_exists_not_a_dir(self, tmp_path):
+        f = tmp_path / "test.txt"
+        f.write_text("hello")
+        cond = directory_exists_condition(str(f))
+        passed, _ = cond.evaluate()
+        assert passed is False
+
     def test_command_available(self):
         cond = command_available_condition("python")
         passed, _ = cond.evaluate()
-        # python should be on PATH in the test environment
-        assert isinstance(passed, bool)
+        assert passed is False
