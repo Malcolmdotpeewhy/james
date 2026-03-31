@@ -129,6 +129,8 @@ class ExecutionGraph:
         if node.id in self.nodes:
             raise ValueError(f"Duplicate node ID: {node.id}")
         self.nodes[node.id] = node
+        if hasattr(self, "_topological_order"):
+            delattr(self, "_topological_order")
         return node
 
     def add_dependency(self, from_id: str, to_id: str) -> None:
@@ -139,6 +141,8 @@ class ExecutionGraph:
             raise KeyError(f"Target node not found: {to_id}")
         if from_id not in self.nodes[to_id].dependencies:
             self.nodes[to_id].dependencies.append(from_id)
+            if hasattr(self, "_topological_order"):
+                delattr(self, "_topological_order")
 
     def get_node(self, node_id: str) -> Node:
         """Get node by ID."""
@@ -150,7 +154,7 @@ class ExecutionGraph:
 
     def _validate_no_cycles(self) -> None:
         """Kahn's algorithm for cycle detection (delegated to topological_sort)."""
-        self.topological_sort()
+        self._topological_order = self.topological_sort()
 
     def topological_sort(self) -> list[str]:
         """
@@ -189,25 +193,28 @@ class ExecutionGraph:
         """
         Identify PENDING nodes whose dependencies have entered a terminal
         failure state (FAILED, SKIPPED, ROLLED_BACK) and mark them as SKIPPED.
-        This cascades failures down the DAG.
+        This cascades failures down the DAG in O(n) topological order.
         """
-        changed = True
-        while changed:
-            changed = False
-            for node in self.nodes.values():
-                if node.state == NodeState.PENDING:
-                    for dep_id in node.dependencies:
-                        if dep_id in self.nodes:
-                            dep_state = self.nodes[dep_id].state
-                            if dep_state in (NodeState.FAILED, NodeState.SKIPPED, NodeState.ROLLED_BACK):
-                                node.state = NodeState.SKIPPED
-                                node.result = NodeResult(
-                                    success=False,
-                                    error=f"Dependency '{dep_id}' failed or was skipped",
-                                    metadata={"skipped_due_to_dependency": dep_id}
-                                )
-                                changed = True
-                                break
+        if not hasattr(self, "_topological_order"):
+            try:
+                self._topological_order = self.topological_sort()
+            except CycleDetectedError:
+                return
+
+        for nid in self._topological_order:
+            node = self.nodes.get(nid)
+            if node and node.state == NodeState.PENDING:
+                for dep_id in node.dependencies:
+                    if dep_id in self.nodes:
+                        dep_state = self.nodes[dep_id].state
+                        if dep_state in (NodeState.FAILED, NodeState.SKIPPED, NodeState.ROLLED_BACK):
+                            node.state = NodeState.SKIPPED
+                            node.result = NodeResult(
+                                success=False,
+                                error=f"Dependency '{dep_id}' failed or was skipped",
+                                metadata={"skipped_due_to_dependency": dep_id}
+                            )
+                            break
 
     def get_ready_nodes(self) -> list[Node]:
         """
@@ -283,6 +290,8 @@ class ExecutionGraph:
             node.state = NodeState.PENDING
             node.result = None
         self.completed_at = None
+        if hasattr(self, "_topological_order"):
+            delattr(self, "_topological_order")
 
     # ── Serialization ────────────────────────────────────────────
 
