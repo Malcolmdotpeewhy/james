@@ -114,7 +114,7 @@ class TestMetaMemory:
         memory.record_optimization("s1", "Added caching", 0.5, 0.7)
         history = memory.get_optimization_history(skill_id="s1")
         assert len(history) == 1
-        assert history[0]["improvement"] == pytest.approx(0.2)
+        assert abs(history[0]["improvement"] - 0.2) < 0.001
 
     def test_best_optimizations(self, memory):
         memory.record_optimization("s1", "Caching", 0.5, 0.8)

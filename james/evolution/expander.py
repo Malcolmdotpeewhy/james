@@ -27,7 +27,6 @@ import subprocess
 import sys
 import tempfile
 import time
-from typing import Any, Optional
 
 logger = logging.getLogger("james.evolution")
 
@@ -143,7 +142,7 @@ class ToolSandbox:
             ("open(", None),  # Check context — writing is dangerous
         ]
 
-        code_lower = code.lower()
+        code.lower()
         for pattern, description in dangerous_patterns:
             if pattern in code:
                 if pattern == "open(" and "'w'" not in code and "'a'" not in code:
@@ -159,13 +158,16 @@ class ToolSandbox:
 
         # Run static analysis (ruff, mypy, bandit)
         fd, tmp_path = tempfile.mkstemp(suffix=".py", prefix="james_sa_")
+        import shutil
         try:
             with os.fdopen(fd, "w") as f:
                 f.write(code)
 
             # Ruff check
             try:
-                result = subprocess.run([sys.executable, "-m", "ruff", "check", tmp_path], capture_output=True, text=True, timeout=10)
+                ruff_path = shutil.which("ruff") or sys.executable
+                cmd = [ruff_path, "check", tmp_path] if ruff_path != sys.executable else [sys.executable, "-m", "ruff", "check", tmp_path]
+                result = subprocess.run(cmd, capture_output=True, text=True, timeout=10)
                 if result.returncode != 0:
                     violations.append(f"Ruff failed: {result.stdout.strip()[:200]}")
             except Exception as e:
@@ -173,7 +175,9 @@ class ToolSandbox:
 
             # Mypy check
             try:
-                result = subprocess.run([sys.executable, "-m", "mypy", tmp_path], capture_output=True, text=True, timeout=10)
+                mypy_path = shutil.which("mypy") or sys.executable
+                cmd = [mypy_path, tmp_path] if mypy_path != sys.executable else [sys.executable, "-m", "mypy", tmp_path]
+                result = subprocess.run(cmd, capture_output=True, text=True, timeout=10)
                 if result.returncode != 0:
                     violations.append(f"Mypy failed: {result.stdout.strip()[:200]}")
             except Exception as e:
@@ -181,16 +185,32 @@ class ToolSandbox:
 
             # Bandit check
             try:
-                result = subprocess.run([sys.executable, "-m", "bandit", "-r", tmp_path, "-f", "json", "-q"], capture_output=True, text=True, timeout=10)
-                if result.returncode != 0:
-                    try:
-                        import json
-                        bandit_res = json.loads(result.stdout)
-                        for issue in bandit_res.get("results", []):
-                            if issue.get("issue_severity") in ("HIGH", "MEDIUM"):
-                                violations.append(f"Bandit ({issue.get('issue_severity')}): {issue.get('issue_text')}")
-                    except json.JSONDecodeError:
-                        violations.append(f"Bandit failed: {result.stdout.strip()[:200]}")
+                bandit_path = shutil.which("bandit")
+                if bandit_path:
+                    cmd = [bandit_path, "-r", tmp_path, "-f", "json", "-q"]
+                else:
+                    cmd = [sys.executable, "-m", "bandit", "-r", tmp_path, "-f", "json", "-q"]
+
+                # Check if bandit is available before running
+                try:
+                    import importlib.util
+                    bandit_installed = shutil.which("bandit") is not None or importlib.util.find_spec("bandit") is not None
+                except Exception:
+                    bandit_installed = False
+
+                if bandit_installed:
+                    result = subprocess.run(cmd, capture_output=True, text=True, timeout=10)
+                    if result.returncode != 0:
+                        try:
+                            import json
+                            bandit_res = json.loads(result.stdout)
+                            for issue in bandit_res.get("results", []):
+                                if issue.get("issue_severity") in ("HIGH", "MEDIUM"):
+                                    violations.append(f"Bandit ({issue.get('issue_severity')}): {issue.get('issue_text')}")
+                        except json.JSONDecodeError:
+                            violations.append(f"Bandit failed: {result.stdout.strip()[:200]}")
+                else:
+                    logger.warning("Bandit is not installed. Skipping Bandit check.")
             except Exception as e:
                 logger.warning(f"Bandit check failed: {e}")
 

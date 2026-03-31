@@ -52,3 +52,23 @@
 {"ts":1774776812.7930598,"op":"node_execute","class":"safe","node":"221ad5e0","details":"Layer=2 Action=<function TestDAGParallelExecution.test_parallel_execution.<locals>.sleep_action at 0x7fa166fcb1a0>","approved":true,"confirmed":false}
 {"ts":1774776812.7935581,"op":"node_execute","class":"safe","node":"6de9dd4b","details":"Layer=2 Action=<function TestDAGParallelExecution.test_parallel_execution.<locals>.sleep_action at 0x7fa166fcb1a0>","approved":true,"confirmed":false}
 {"ts":1774776813.7988803,"op":"graph_complete","class":"safe","node":"","details":"3/3 nodes, failures=False","approved":true,"confirmed":false}
+{"ts":1774863814.9634595,"op":"graph_start","class":"safe","node":"","details":"test_parallel","approved":true,"confirmed":false}
+{"ts":1774863814.982109,"op":"node_execute","class":"safe","node":"04721a2b","details":"Layer=2 Action=<function TestDAGParallelExecution.test_parallel_execution.<locals>.sleep_action at 0x7fdd79963e20>","approved":true,"confirmed":false}
+{"ts":1774863814.9847462,"op":"node_execute","class":"safe","node":"8aad09ba","details":"Layer=2 Action=<function TestDAGParallelExecution.test_parallel_execution.<locals>.sleep_action at 0x7fdd79963e20>","approved":true,"confirmed":false}
+{"ts":1774863814.9857426,"op":"node_execute","class":"safe","node":"9fe65e39","details":"Layer=2 Action=<function TestDAGParallelExecution.test_parallel_execution.<locals>.sleep_action at 0x7fdd79963e20>","approved":true,"confirmed":false}
+{"ts":1774863815.992741,"op":"graph_complete","class":"safe","node":"","details":"3/3 nodes, failures=False","approved":true,"confirmed":false}
+{"ts":1774866256.6220515,"op":"graph_start","class":"safe","node":"","details":"test_parallel","approved":true,"confirmed":false}
+{"ts":1774866256.624538,"op":"node_execute","class":"safe","node":"afab38de","details":"Layer=2 Action=<function TestDAGParallelExecution.test_parallel_execution.<locals>.sleep_action at 0x7fa17d7ba0c0>","approved":true,"confirmed":false}
+{"ts":1774866256.6265512,"op":"node_execute","class":"safe","node":"15077eba","details":"Layer=2 Action=<function TestDAGParallelExecution.test_parallel_execution.<locals>.sleep_action at 0x7fa17d7ba0c0>","approved":true,"confirmed":false}
+{"ts":1774866256.627623,"op":"node_execute","class":"safe","node":"bf88cb7d","details":"Layer=2 Action=<function TestDAGParallelExecution.test_parallel_execution.<locals>.sleep_action at 0x7fa17d7ba0c0>","approved":true,"confirmed":false}
+{"ts":1774866257.6335423,"op":"graph_complete","class":"safe","node":"","details":"3/3 nodes, failures=False","approved":true,"confirmed":false}
+{"ts":1774866316.1368613,"op":"graph_start","class":"safe","node":"","details":"test_parallel","approved":true,"confirmed":false}
+{"ts":1774866316.1390994,"op":"node_execute","class":"safe","node":"364135dc","details":"Layer=2 Action=<function TestDAGParallelExecution.test_parallel_execution.<locals>.sleep_action at 0x7fd23dc16520>","approved":true,"confirmed":false}
+{"ts":1774866316.1417873,"op":"node_execute","class":"safe","node":"763118e3","details":"Layer=2 Action=<function TestDAGParallelExecution.test_parallel_execution.<locals>.sleep_action at 0x7fd23dc16520>","approved":true,"confirmed":false}
+{"ts":1774866316.1424434,"op":"node_execute","class":"safe","node":"fbe247d0","details":"Layer=2 Action=<function TestDAGParallelExecution.test_parallel_execution.<locals>.sleep_action at 0x7fd23dc16520>","approved":true,"confirmed":false}
+{"ts":1774866317.1479974,"op":"graph_complete","class":"safe","node":"","details":"3/3 nodes, failures=False","approved":true,"confirmed":false}
+{"ts":1774940439.1876593,"op":"graph_start","class":"safe","node":"","details":"test_parallel","approved":true,"confirmed":false}
+{"ts":1774940439.192432,"op":"node_execute","class":"safe","node":"8e257c57","details":"Layer=2 Action=<function TestDAGParallelExecution.test_parallel_execution.<locals>.sleep_action at 0x7fb7c90a6de0>","approved":true,"confirmed":false}
+{"ts":1774940439.194074,"op":"node_execute","class":"safe","node":"900f5371","details":"Layer=2 Action=<function TestDAGParallelExecution.test_parallel_execution.<locals>.sleep_action at 0x7fb7c90a6de0>","approved":true,"confirmed":false}
+{"ts":1774940439.1949003,"op":"node_execute","class":"safe","node":"f46ece35","details":"Layer=2 Action=<function TestDAGParallelExecution.test_parallel_execution.<locals>.sleep_action at 0x7fb7c90a6de0>","approved":true,"confirmed":false}
+{"ts":1774940440.2055376,"op":"graph_complete","class":"safe","node":"","details":"3/3 nodes, failures=False","approved":true,"confirmed":false}

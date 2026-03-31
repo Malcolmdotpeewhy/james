@@ -619,31 +619,35 @@ class Orchestrator:
         from james.dag import NodeState
         
         with concurrent.futures.ThreadPoolExecutor(max_workers=10) as executor:
-            futures = set()
+            future_to_node = {}
             while True:
                 graph.update_skipped_nodes()
                 ready_nodes = graph.get_ready_nodes()
                 for node in ready_nodes:
                     node.state = NodeState.RUNNING  # Prevent picking it up again
                     future = executor.submit(self._execute_node, node, graph)
-                    futures.add(future)
+                    future_to_node[future] = node
                     
-                if not futures:
+                if not future_to_node:
                     # No nodes are running and no nodes are ready. Deadlock or finished.
                     break
                     
                 done, not_done = concurrent.futures.wait(
-                    futures, return_when=concurrent.futures.FIRST_COMPLETED
+                    future_to_node.keys(), return_when=concurrent.futures.FIRST_COMPLETED
                 )
                 
                 for f in done:
+                    node = future_to_node.pop(f)
                     # Retrieve any thrown exceptions to prevent silent thread crashes
                     try:
                         f.result()
                     except Exception as e:
-                        logger.error(f"Node execution thread crashed: {e}")
-                
-                futures = not_done
+                        logger.error(f"Node execution thread crashed for node {node.id}: {e}")
+                        node.state = NodeState.FAILED
+                        node.result = NodeResult(
+                            success=False,
+                            error=f"Thread execution crashed: {e}"
+                        )
 
         graph.completed_at = time.time()
         self.memory.st_set("active_graph", graph.to_dict())
