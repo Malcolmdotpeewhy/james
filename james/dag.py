@@ -121,6 +121,7 @@ class ExecutionGraph:
         self.nodes: dict[str, Node] = {}
         self.created_at = time.time()
         self.completed_at: Optional[float] = None
+        self._topological_order: Optional[list[str]] = None
 
     # ── Node Management ──────────────────────────────────────────
 
@@ -129,6 +130,7 @@ class ExecutionGraph:
         if node.id in self.nodes:
             raise ValueError(f"Duplicate node ID: {node.id}")
         self.nodes[node.id] = node
+        self._topological_order = None
         return node
 
     def add_dependency(self, from_id: str, to_id: str) -> None:
@@ -139,6 +141,7 @@ class ExecutionGraph:
             raise KeyError(f"Target node not found: {to_id}")
         if from_id not in self.nodes[to_id].dependencies:
             self.nodes[to_id].dependencies.append(from_id)
+        self._topological_order = None
 
     def get_node(self, node_id: str) -> Node:
         """Get node by ID."""
@@ -157,6 +160,9 @@ class ExecutionGraph:
         Returns node IDs in topological order.
         Raises CycleDetectedError if graph contains cycles.
         """
+        if getattr(self, "_topological_order", None) is not None:
+            return self._topological_order
+
         adj: dict[str, list[str]] = {nid: [] for nid in self.nodes}
         in_deg: dict[str, int] = {nid: 0 for nid in self.nodes}
 
@@ -183,6 +189,7 @@ class ExecutionGraph:
                 f"visited {len(order)}/{len(self.nodes)} nodes"
             )
 
+        self._topological_order = order
         return order
 
     def update_skipped_nodes(self) -> None:
@@ -191,10 +198,10 @@ class ExecutionGraph:
         failure state (FAILED, SKIPPED, ROLLED_BACK) and mark them as SKIPPED.
         This cascades failures down the DAG.
         """
-        changed = True
-        while changed:
-            changed = False
-            for node in self.nodes.values():
+        try:
+            order = self.topological_sort()
+            for nid in order:
+                node = self.nodes[nid]
                 if node.state == NodeState.PENDING:
                     for dep_id in node.dependencies:
                         if dep_id in self.nodes:
@@ -206,8 +213,26 @@ class ExecutionGraph:
                                     error=f"Dependency '{dep_id}' failed or was skipped",
                                     metadata={"skipped_due_to_dependency": dep_id}
                                 )
-                                changed = True
                                 break
+        except CycleDetectedError:
+            # Fallback to O(N^2) iterative cascading if DAG contains a cycle
+            changed = True
+            while changed:
+                changed = False
+                for node in self.nodes.values():
+                    if node.state == NodeState.PENDING:
+                        for dep_id in node.dependencies:
+                            if dep_id in self.nodes:
+                                dep_state = self.nodes[dep_id].state
+                                if dep_state in (NodeState.FAILED, NodeState.SKIPPED, NodeState.ROLLED_BACK):
+                                    node.state = NodeState.SKIPPED
+                                    node.result = NodeResult(
+                                        success=False,
+                                        error=f"Dependency '{dep_id}' failed or was skipped",
+                                        metadata={"skipped_due_to_dependency": dep_id}
+                                    )
+                                    changed = True
+                                    break
 
     def get_ready_nodes(self) -> list[Node]:
         """
