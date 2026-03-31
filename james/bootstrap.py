@@ -12,7 +12,6 @@ import os
 import shutil
 import subprocess
 import sys
-from typing import Optional
 
 from james.memory.store import MemoryStore
 from james.skills.skill import Skill, SkillStore
