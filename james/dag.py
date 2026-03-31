@@ -204,10 +204,11 @@ class ExecutionGraph:
         failure state (FAILED, SKIPPED, ROLLED_BACK) and mark them as SKIPPED.
         This cascades failures down the DAG.
         """
-        changed = True
-        while changed:
-            changed = False
-            for node in self.nodes.values():
+        try:
+            # ⚡ Bolt: Use topological sort for O(V+E) cascading instead of O(V^2) while-loop
+            order = self.topological_sort()
+            for nid in order:
+                node = self.nodes[nid]
                 if node.state == NodeState.PENDING:
                     for dep_id in node.dependencies:
                         if dep_id in self.nodes:
@@ -223,8 +224,30 @@ class ExecutionGraph:
                                     error=f"Dependency '{dep_id}' failed or was skipped",
                                     metadata={"skipped_due_to_dependency": dep_id},
                                 )
-                                changed = True
                                 break
+        except Exception:
+            # Fallback to O(V^2) iterative cascading if there's a cycle
+            changed = True
+            while changed:
+                changed = False
+                for node in self.nodes.values():
+                    if node.state == NodeState.PENDING:
+                        for dep_id in node.dependencies:
+                            if dep_id in self.nodes:
+                                dep_state = self.nodes[dep_id].state
+                                if dep_state in (
+                                    NodeState.FAILED,
+                                    NodeState.SKIPPED,
+                                    NodeState.ROLLED_BACK,
+                                ):
+                                    node.state = NodeState.SKIPPED
+                                    node.result = NodeResult(
+                                        success=False,
+                                        error=f"Dependency '{dep_id}' failed or was skipped",
+                                        metadata={"skipped_due_to_dependency": dep_id},
+                                    )
+                                    changed = True
+                                    break
 
     def get_ready_nodes(self) -> list[Node]:
         """
