@@ -160,12 +160,15 @@ class ToolSandbox:
         # Run static analysis (ruff, mypy, bandit)
         fd, tmp_path = tempfile.mkstemp(suffix=".py", prefix="james_sa_")
         try:
+            import shutil
             with os.fdopen(fd, "w") as f:
                 f.write(code)
 
             # Ruff check
             try:
-                result = subprocess.run([sys.executable, "-m", "ruff", "check", tmp_path], capture_output=True, text=True, timeout=10)
+                ruff_bin = shutil.which("ruff")
+                ruff_cmd = [ruff_bin, "check", tmp_path] if ruff_bin else [sys.executable, "-m", "ruff", "check", tmp_path]
+                result = subprocess.run(ruff_cmd, capture_output=True, text=True, timeout=10)
                 if result.returncode != 0:
                     violations.append(f"Ruff failed: {result.stdout.strip()[:200]}")
             except Exception as e:
@@ -173,7 +176,9 @@ class ToolSandbox:
 
             # Mypy check
             try:
-                result = subprocess.run([sys.executable, "-m", "mypy", tmp_path], capture_output=True, text=True, timeout=10)
+                mypy_bin = shutil.which("mypy")
+                mypy_cmd = [mypy_bin, tmp_path] if mypy_bin else [sys.executable, "-m", "mypy", tmp_path]
+                result = subprocess.run(mypy_cmd, capture_output=True, text=True, timeout=10)
                 if result.returncode != 0:
                     violations.append(f"Mypy failed: {result.stdout.strip()[:200]}")
             except Exception as e:
@@ -181,7 +186,9 @@ class ToolSandbox:
 
             # Bandit check
             try:
-                result = subprocess.run([sys.executable, "-m", "bandit", "-r", tmp_path, "-f", "json", "-q"], capture_output=True, text=True, timeout=10)
+                bandit_bin = shutil.which("bandit")
+                bandit_cmd = [bandit_bin, "-r", tmp_path, "-f", "json", "-q"] if bandit_bin else [sys.executable, "-m", "bandit", "-r", tmp_path, "-f", "json", "-q"]
+                result = subprocess.run(bandit_cmd, capture_output=True, text=True, timeout=10)
                 if result.returncode != 0:
                     try:
                         import json
