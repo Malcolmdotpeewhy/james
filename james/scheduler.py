@@ -23,7 +23,7 @@ import threading
 import time
 import uuid
 from dataclasses import dataclass
-from datetime import datetime, timedelta
+from datetime import datetime
 from typing import Any, Optional
 
 logger = logging.getLogger("james.scheduler")
@@ -141,18 +141,25 @@ class TaskScheduler:
         self._running = False
         self._thread: Optional[threading.Thread] = None
         self._stop_event = threading.Event()
+
+        db_dir = os.path.dirname(self.db_path)
+        if db_dir:
+            os.makedirs(db_dir, exist_ok=True)
+
+        self._conn = sqlite3.connect(self.db_path, check_same_thread=False)
+        self._lock = threading.Lock()
         self._init_db()
 
     def _init_db(self) -> None:
         """Ensure the scheduled_tasks table exists."""
-        os.makedirs(os.path.dirname(self.db_path), exist_ok=True)
-        with sqlite3.connect(self.db_path) as conn:
+        with self._lock, self._conn as conn:
             conn.execute(self._TABLE_SCHEMA)
             conn.commit()
 
-    def _get_conn(self) -> sqlite3.Connection:
-        """Get a new SQLite connection (thread-safe)."""
-        return sqlite3.connect(self.db_path)
+    def close(self):
+        """Close the database connection."""
+        with self._lock:
+            self._conn.close()
 
     # ── CRUD Operations ──────────────────────────────────────────
 
@@ -187,7 +194,7 @@ class TaskScheduler:
         else:
             next_run = time.time()  # Run immediately on next poll
 
-        with self._get_conn() as conn:
+        with self._lock, self._conn as conn:
             conn.execute(
                 "INSERT INTO scheduled_tasks "
                 "(id, name, task, schedule_type, interval_seconds, "
@@ -207,7 +214,7 @@ class TaskScheduler:
 
     def cancel_task(self, task_id: str) -> bool:
         """Disable a scheduled task. Returns True if task existed."""
-        with self._get_conn() as conn:
+        with self._lock, self._conn as conn:
             cursor = conn.execute(
                 "UPDATE scheduled_tasks SET enabled=0 WHERE id=?",
                 (task_id,),
@@ -221,7 +228,7 @@ class TaskScheduler:
 
     def delete_task(self, task_id: str) -> bool:
         """Permanently delete a scheduled task."""
-        with self._get_conn() as conn:
+        with self._lock, self._conn as conn:
             cursor = conn.execute(
                 "DELETE FROM scheduled_tasks WHERE id=?",
                 (task_id,),
@@ -236,14 +243,14 @@ class TaskScheduler:
             query += " WHERE enabled=1"
         query += " ORDER BY next_run ASC"
 
-        with self._get_conn() as conn:
+        with self._lock, self._conn as conn:
             rows = conn.execute(query).fetchall()
 
         return [self._row_to_task(row) for row in rows]
 
     def get_task(self, task_id: str) -> Optional[ScheduledTask]:
         """Get a specific task by ID."""
-        with self._get_conn() as conn:
+        with self._lock, self._conn as conn:
             row = conn.execute(
                 "SELECT * FROM scheduled_tasks WHERE id=?",
                 (task_id,),
@@ -308,7 +315,7 @@ class TaskScheduler:
         """Check for and execute any due tasks. Returns count executed."""
         now = time.time()
 
-        with self._get_conn() as conn:
+        with self._lock, self._conn as conn:
             rows = conn.execute(
                 "SELECT id, name, task, schedule_type, interval_seconds "
                 "FROM scheduled_tasks "
@@ -324,7 +331,7 @@ class TaskScheduler:
             executed += 1
 
             # Update run info
-            with self._get_conn() as conn:
+            with self._lock, self._conn as conn:
                 if sched_type == "interval" and interval:
                     # Reschedule for next interval
                     conn.execute(
