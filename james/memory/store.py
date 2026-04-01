@@ -87,8 +87,9 @@ class MemoryStore:
                 );
 
                 -- Indexes for common queries
-                CREATE INDEX IF NOT EXISTS idx_metrics_node ON metrics(node_id);
-                CREATE INDEX IF NOT EXISTS idx_metrics_ts ON metrics(timestamp);
+                -- ⚡ Bolt: Replaced separate node_id and timestamp indexes with a single composite index
+                -- to optimize frequent querying and sorting of recent metrics per node in get_metrics()
+                CREATE INDEX IF NOT EXISTS idx_metrics_node_ts ON metrics(node_id, timestamp DESC);
                 CREATE INDEX IF NOT EXISTS idx_meta_skill ON meta(skill_id);
                 CREATE INDEX IF NOT EXISTS idx_lt_category ON long_term(category);
             """)
