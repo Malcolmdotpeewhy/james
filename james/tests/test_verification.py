@@ -14,11 +14,19 @@ class TestCondition:
         cond = Condition(name="always_true", check=lambda: True)
         passed, msg = cond.evaluate()
         assert passed is True
+        assert msg == "✓ always_true"
+
+    def test_passing_condition_with_context(self):
+        cond = Condition(name="ctx_true", check=lambda ctx: True)
+        passed, msg = cond.evaluate(context={"foo": "bar"})
+        assert passed is True
+        assert msg == "✓ ctx_true"
 
     def test_failing_condition(self):
         cond = Condition(name="always_false", check=lambda: False)
         passed, msg = cond.evaluate()
         assert passed is False
+        assert msg == "✗ always_false: condition not met"
 
     def test_exception_in_check(self):
         def bad_check():
@@ -30,10 +38,13 @@ class TestCondition:
 
     def test_context_passing(self):
         cond = Condition(name="ctx", check=lambda ctx: ctx.get("ready", False))
-        passed, _ = cond.evaluate(context={"ready": True})
+        passed, msg = cond.evaluate(context={"ready": True})
         assert passed is True
-        passed, _ = cond.evaluate(context={"ready": False})
+        assert msg == "✓ ctx"
+
+        passed, msg = cond.evaluate(context={"ready": False})
         assert passed is False
+        assert msg == "✗ ctx: condition not met"
 
 
 class TestVerificationEngine:
@@ -156,7 +167,16 @@ class TestPrebuiltConditions:
         passed, _ = cond.evaluate()
         assert passed is False
 
-    def test_command_available(self):
+    @patch('shutil.which')
+    def test_command_available(self, mock_which):
+        # Test when command is available
+        mock_which.return_value = "/usr/bin/python"
         cond = command_available_condition("python")
+        passed, _ = cond.evaluate()
+        assert passed is True
+
+        # Test when command is not available
+        mock_which.return_value = None
+        cond = command_available_condition("not_a_command")
         passed, _ = cond.evaluate()
         assert passed is False
