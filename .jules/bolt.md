@@ -9,3 +9,7 @@
 ## 2024-04-01 - [Python Generator Overhead in Hot Paths]
 **Learning:** Using generator expressions within `all()`, `any()`, and `sum()` in frequently accessed properties (like `is_complete`, `has_failures`, `progress`) and functions (like `get_ready_nodes` in `james/dag.py`) introduces significant function call and frame allocation overhead in Python. When evaluated heavily inside an orchestrator execution loop, these generators become a measurable bottleneck.
 **Action:** Replace generator expressions in hot paths with standard `for` loops utilizing early returns (`break` or `return`). This simple optimization yielded a ~1.7x speedup in the DAG ready-node resolution and status-checking loop without sacrificing readability.
+
+## 2024-04-01 - [O(N) memory allocation and file read in properties]
+**Learning:** Polled properties like `AuditLog.entry_count` dynamically evaluated `sum(1 for _ in path.read_text().splitlines() if _)`. This triggered O(N) memory allocations and expensive I/O by reading the entire append-only log file into memory upon every query. This becomes a severe bottleneck as the log grows and is frequently checked by endpoints like `status()`.
+**Action:** When working with append-only data structures or files, explicitly maintain an internal cache (e.g., `_cached_count`) that only performs I/O on cold start (using line-by-line streaming) and increments on new records, mitigating latency spikes during frequent property access.
