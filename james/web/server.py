@@ -14,13 +14,13 @@ Usage:
 
 from __future__ import annotations
 
-import json
 import os
 import sys
 import time
 import traceback
 from pathlib import Path
 
+from functools import wraps
 from flask import Flask, jsonify, request, render_template_string
 
 # Add project root to path
@@ -44,11 +44,42 @@ def _get_orch() -> Orchestrator:
     return _orch
 
 
+
+_AUTH_TOKEN = os.environ.get("JAMES_API_TOKEN")
+
+def require_auth(f):
+    @wraps(f)
+    def decorated(*args, **kwargs):
+        # Fail securely if API token is not configured
+        if not _AUTH_TOKEN:
+            return jsonify({"error": "JAMES_API_TOKEN is not configured on the server. API access is disabled."}), 401
+
+
+        # Check either Authorization header or token query param
+        auth_header = request.headers.get("Authorization")
+        token_param = request.args.get("token")
+
+        token = None
+        if auth_header and auth_header.startswith("Bearer "):
+            token = auth_header.split(" ")[1]
+        elif token_param:
+            token = token_param
+
+        if not token:
+            return jsonify({"error": "Unauthorized"}), 401
+
+        if token != _AUTH_TOKEN:
+            return jsonify({"error": "Forbidden"}), 403
+
+        return f(*args, **kwargs)
+    return decorated
+
 # ══════════════════════════════════════════════════════════════════
 # API ROUTES
 # ══════════════════════════════════════════════════════════════════
 
 @app.route("/api/status")
+@require_auth
 def api_status():
     """Get system status."""
     try:
@@ -58,6 +89,7 @@ def api_status():
 
 
 @app.route("/api/run", methods=["POST"])
+@require_auth
 def api_run():
     """Execute a task."""
     data = request.get_json(force=True)
@@ -104,6 +136,7 @@ def api_run():
 
 
 @app.route("/api/cmd", methods=["POST"])
+@require_auth
 def api_cmd():
     """Quick command execution."""
     data = request.get_json(force=True)
@@ -120,6 +153,7 @@ def api_cmd():
 
 
 @app.route("/api/stream")
+@require_auth
 def api_stream():
     """Stream execution events via SSE."""
     from flask import Response
@@ -142,6 +176,7 @@ def api_stream():
 
 
 @app.route("/api/layers")
+@require_auth
 def api_layers():
     """Get authority layer status."""
     orch = _get_orch()
@@ -162,6 +197,7 @@ def api_layers():
 
 
 @app.route("/api/skills")
+@require_auth
 def api_skills():
     """List skills."""
     orch = _get_orch()
@@ -179,12 +215,14 @@ def api_skills():
 
 
 @app.route("/api/memory")
+@require_auth
 def api_memory():
     """Get memory stats."""
     return jsonify(_get_orch().memory.get_stats())
 
 
 @app.route("/api/metrics")
+@require_auth
 def api_metrics():
     """Get recent metrics."""
     limit = request.args.get("limit", 30, type=int)
@@ -192,6 +230,7 @@ def api_metrics():
 
 
 @app.route("/api/audit")
+@require_auth
 def api_audit():
     """Get audit log."""
     count = request.args.get("count", 50, type=int)
@@ -199,6 +238,7 @@ def api_audit():
 
 
 @app.route("/api/diagnose")
+@require_auth
 def api_diagnose():
     """Run diagnostics."""
     report = _get_orch().optimizer.diagnose()
@@ -211,12 +251,14 @@ def api_diagnose():
 
 
 @app.route("/api/optimize", methods=["POST"])
+@require_auth
 def api_optimize():
     """Run improvement cycle."""
     return jsonify(_get_orch().improve())
 
 
 @app.route("/api/bootstrap", methods=["POST"])
+@require_auth
 def api_bootstrap():
     """Run system bootstrap."""
     from james.bootstrap import run_bootstrap
@@ -226,6 +268,7 @@ def api_bootstrap():
 
 
 @app.route("/api/tools")
+@require_auth
 def api_tools():
     """List all registered tools."""
     orch = _get_orch()
@@ -234,6 +277,7 @@ def api_tools():
 
 
 @app.route("/api/tools/call", methods=["POST"])
+@require_auth
 def api_tools_call():
     """Call a registered tool directly."""
     data = request.get_json(force=True)
@@ -253,6 +297,7 @@ _chat_history: list[dict] = []  # In-memory conversation history
 
 
 @app.route("/api/ai/chat", methods=["POST"])
+@require_auth
 def api_ai_chat():
     """Chat with JAMES AI."""
     data = request.get_json(force=True)
@@ -352,6 +397,7 @@ def api_ai_chat():
 
 
 @app.route("/api/ai/chat/clear", methods=["POST"])
+@require_auth
 def api_ai_chat_clear():
     """Clear the conversation history."""
     global _chat_history
@@ -360,6 +406,7 @@ def api_ai_chat_clear():
 
 
 @app.route("/api/ai/execute", methods=["POST"])
+@require_auth
 def api_ai_execute():
     """Execute an AI-generated plan."""
     data = request.get_json(force=True)
@@ -400,6 +447,7 @@ def api_ai_execute():
 
 
 @app.route("/api/ai/synthesize", methods=["POST"])
+@require_auth
 def api_ai_synthesize():
     """Synthesize execution results into a chat response."""
     data = request.get_json(force=True)
@@ -429,6 +477,7 @@ def api_ai_synthesize():
 
 
 @app.route("/api/ai/analyze", methods=["POST"])
+@require_auth
 def api_ai_analyze():
     """AI error analysis."""
     data = request.get_json(force=True)
@@ -445,6 +494,7 @@ def api_ai_analyze():
 
 
 @app.route("/api/ai/diagnose", methods=["POST"])
+@require_auth
 def api_ai_diagnose():
     """AI-powered system diagnosis."""
     try:
@@ -460,6 +510,7 @@ def api_ai_diagnose():
 
 
 @app.route("/api/ai/models")
+@require_auth
 def api_ai_models():
     """List available local GGUF models."""
     try:
@@ -471,6 +522,7 @@ def api_ai_models():
 
 
 @app.route("/api/ai/start", methods=["POST"])
+@require_auth
 def api_ai_start():
     """Start local llama-server with a specific model."""
     data = request.get_json(force=True) if request.data else {}
@@ -492,6 +544,7 @@ def api_ai_start():
 
 
 @app.route("/api/ai/stop", methods=["POST"])
+@require_auth
 def api_ai_stop():
     """Stop local llama-server."""
     try:
@@ -505,6 +558,7 @@ def api_ai_stop():
 
 
 @app.route("/api/ai/status")
+@require_auth
 def api_ai_status():
     """Get AI backend status."""
     try:
