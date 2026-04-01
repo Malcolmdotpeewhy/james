@@ -11,7 +11,7 @@ import re
 import time
 from dataclasses import dataclass, field
 from enum import Enum
-from typing import Any, Optional
+from typing import Optional
 
 
 class FailureType(Enum):
@@ -75,6 +75,16 @@ _STRUCTURAL_PATTERNS = [
     re.compile(r"invalid\s*(argument|parameter|option)", re.I),
     re.compile(r"schema\s*(mismatch|error|invalid)", re.I),
 ]
+
+
+@dataclass
+class FailureContext:
+    """Context and details of a failure event to be recorded."""
+    node_id: str
+    node_name: str
+    error_message: str
+    exit_code: Optional[int] = None
+    layer_attempted: Optional[int] = None
 
 
 @dataclass
@@ -206,24 +216,20 @@ class FailureTracker:
 
     def record_failure(
         self,
-        node_id: str,
-        node_name: str,
-        error_message: str,
-        exit_code: Optional[int] = None,
-        layer_attempted: Optional[int] = None,
+        context: FailureContext,
     ) -> FailureRecord:
         """Record and classify a failure. Returns the FailureRecord."""
-        ftype = self._classifier.classify(error_message, exit_code)
+        ftype = self._classifier.classify(context.error_message, context.exit_code)
         recovery = self._classifier.get_recovery_plan(
-            ftype, current_layer=layer_attempted or 1
+            ftype, current_layer=context.layer_attempted or 1
         )
         record = FailureRecord(
-            node_id=node_id,
-            node_name=node_name,
+            node_id=context.node_id,
+            node_name=context.node_name,
             failure_type=ftype,
-            error_message=error_message,
-            exit_code=exit_code,
-            layer_attempted=layer_attempted,
+            error_message=context.error_message,
+            exit_code=context.exit_code,
+            layer_attempted=context.layer_attempted,
             recovery_actions=recovery,
         )
         self._records.append(record)
