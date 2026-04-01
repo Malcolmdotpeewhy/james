@@ -17,3 +17,7 @@
 ## 2024-04-01 - [O(1) Data Structures in Polling Loops]
 **Learning:** In tight polling loops like `FileWatcher._scan_directory` (`james/watcher.py`) that call `os.walk`, redefining static sets inside the loop (e.g., `{".git", "__pycache__", ...}`) forces unnecessary reallocations on every iteration. Additionally, using `any()` with generator expressions for filtering files adds measurable frame allocation and function call overhead.
 **Action:** When writing or optimizing frequently polling loops or hot paths, hoist static data structures to class-level constants. Replace inline generators passed to `any()`, `all()`, or `sum()` with standard `for` loops utilizing early `break` or `return` to avoid per-iteration overhead.
+
+## 2024-04-01 - [Composite Index for Time-Series Queries]
+**Learning:** SQLite cannot use two separate single-column indexes (`node_id` and `timestamp`) efficiently for a query that filters on one column and sorts on the other (`WHERE node_id = ? ORDER BY timestamp DESC`). It must choose one index and perform an expensive in-memory sort or full table scan.
+**Action:** Always create a composite index `(node_id, timestamp DESC)` for time-series metrics tables to eliminate in-memory sorting, achieving dramatic speedups (e.g., ~200x) for the most common access patterns.
