@@ -15,7 +15,7 @@ import time
 from dataclasses import dataclass, field
 from enum import Enum
 from pathlib import Path
-from typing import Any, Optional
+from typing import Optional
 
 try:
     import yaml
@@ -208,6 +208,7 @@ class AuditLog:
         self._path.parent.mkdir(parents=True, exist_ok=True)
         if not self._path.exists():
             self._path.touch()
+        self._cached_entry_count: Optional[int] = None
 
     def record(self, entry: AuditEntry) -> AuditEntry:
         """Record an operation to the audit log."""
@@ -224,15 +225,24 @@ class AuditLog:
         with open(self._path, "a", encoding="utf-8") as f:
             f.write(line + "\n")
 
+        # ⚡ Bolt: O(1) update to cached count avoiding full file read
+        if self._cached_entry_count is not None:
+            self._cached_entry_count += 1
+
         return entry
 
     def read_recent(self, count: int = 50) -> list[dict]:
         """Read the most recent N audit entries."""
         if not self._path.exists():
             return []
-        lines = self._path.read_text(encoding="utf-8").strip().splitlines()
+
+        # ⚡ Bolt: Use deque for O(1) memory tail-reading instead of loading entire file
+        from collections import deque
         entries = []
-        for line in lines[-count:]:
+        with open(self._path, "r", encoding="utf-8") as f:
+            last_lines = deque((line.strip() for line in f if line.strip()), maxlen=count)
+
+        for line in last_lines:
             try:
                 entries.append(json.loads(line))
             except json.JSONDecodeError:
@@ -244,7 +254,11 @@ class AuditLog:
         """Total number of audit entries."""
         if not self._path.exists():
             return 0
-        return sum(1 for _ in self._path.read_text(encoding="utf-8").strip().splitlines() if _)
+        # ⚡ Bolt: Cache entry count to prevent O(N) I/O operations on frequent access
+        if self._cached_entry_count is None:
+            with open(self._path, "rb") as f:
+                self._cached_entry_count = sum(1 for _ in f if _.strip())
+        return self._cached_entry_count
 
 
 class RestorePointManager:
