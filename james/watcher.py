@@ -21,8 +21,7 @@ import os
 import threading
 import time
 from dataclasses import dataclass, field
-from pathlib import Path
-from typing import Any, Callable, Optional
+from typing import Optional
 
 logger = logging.getLogger("james.watcher")
 
@@ -256,11 +255,23 @@ class FileWatcher:
                     full_path = os.path.join(root, f)
 
                     # Check include patterns
-                    if not any(fnmatch.fnmatch(f, p) for p in rule.patterns):
+                    # ⚡ Bolt: Unrolled any() with generator for file matching in hotpath
+                    included = False
+                    for p in rule.patterns:
+                        if fnmatch.fnmatch(f, p):
+                            included = True
+                            break
+                    if not included:
                         continue
 
                     # Check exclude patterns
-                    if any(fnmatch.fnmatch(f, p) for p in rule.exclude):
+                    # ⚡ Bolt: Unrolled any() with generator for file matching in hotpath
+                    excluded = False
+                    for p in rule.exclude:
+                        if fnmatch.fnmatch(f, p):
+                            excluded = True
+                            break
+                    if excluded:
                         continue
 
                     try:
