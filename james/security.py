@@ -15,7 +15,7 @@ import time
 from dataclasses import dataclass, field
 from enum import Enum
 from pathlib import Path
-from typing import Any, Optional
+from typing import Optional
 
 try:
     import yaml
@@ -244,7 +244,12 @@ class AuditLog:
         """Total number of audit entries."""
         if not self._path.exists():
             return 0
-        return sum(1 for _ in self._path.read_text(encoding="utf-8").strip().splitlines() if _)
+        count = 0
+        with open(self._path, "rb") as f:
+            for line in f:
+                if line.strip():
+                    count += 1
+        return count
 
 
 class RestorePointManager:
