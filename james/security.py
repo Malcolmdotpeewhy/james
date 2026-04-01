@@ -12,10 +12,11 @@ import json
 import os
 import shutil
 import time
+from collections import deque
 from dataclasses import dataclass, field
 from enum import Enum
 from pathlib import Path
-from typing import Any, Optional
+from typing import Optional
 
 try:
     import yaml
@@ -208,6 +209,7 @@ class AuditLog:
         self._path.parent.mkdir(parents=True, exist_ok=True)
         if not self._path.exists():
             self._path.touch()
+        self._entry_count: Optional[int] = None  # Cache to avoid O(N) recalculations on append-only log
 
     def record(self, entry: AuditEntry) -> AuditEntry:
         """Record an operation to the audit log."""
@@ -224,15 +226,26 @@ class AuditLog:
         with open(self._path, "a", encoding="utf-8") as f:
             f.write(line + "\n")
 
+        if self._entry_count is not None:
+            # Increment cache directly instead of re-reading file
+            self._entry_count += 1
+
         return entry
 
     def read_recent(self, count: int = 50) -> list[dict]:
         """Read the most recent N audit entries."""
         if not self._path.exists():
             return []
-        lines = self._path.read_text(encoding="utf-8").strip().splitlines()
+
+        with open(self._path, "r", encoding="utf-8") as f:
+            # Use bounded deque to read tail without loading entire file into memory (O(count) memory instead of O(N))
+            lines = deque(f, maxlen=count)
+
         entries = []
-        for line in lines[-count:]:
+        for line in lines:
+            line = line.strip()
+            if not line:
+                continue
             try:
                 entries.append(json.loads(line))
             except json.JSONDecodeError:
@@ -244,7 +257,10 @@ class AuditLog:
         """Total number of audit entries."""
         if not self._path.exists():
             return 0
-        return sum(1 for _ in self._path.read_text(encoding="utf-8").strip().splitlines() if _)
+        if self._entry_count is None:
+            with open(self._path, "r", encoding="utf-8") as f:
+                self._entry_count = sum(1 for line in f if line.strip())
+        return self._entry_count
 
 
 class RestorePointManager:

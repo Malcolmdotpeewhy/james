@@ -9,3 +9,7 @@
 ## 2024-04-01 - [Python Generator Overhead in Hot Paths]
 **Learning:** Using generator expressions within `all()`, `any()`, and `sum()` in frequently accessed properties (like `is_complete`, `has_failures`, `progress`) and functions (like `get_ready_nodes` in `james/dag.py`) introduces significant function call and frame allocation overhead in Python. When evaluated heavily inside an orchestrator execution loop, these generators become a measurable bottleneck.
 **Action:** Replace generator expressions in hot paths with standard `for` loops utilizing early returns (`break` or `return`). This simple optimization yielded a ~1.7x speedup in the DAG ready-node resolution and status-checking loop without sacrificing readability.
+
+## 2024-04-01 - [File I/O and Memory bottlenecks with splitlines()]
+**Learning:** In the `AuditLog` class (`james/security.py`), properties like `entry_count` and methods like `read_recent` relied on `path.read_text().splitlines()`. For large, append-only files, this caused severe O(N) memory allocations (loading the entire file into memory as a giant list of strings) and I/O bottlenecks just to count lines or read the last few entries.
+**Action:** When working with append-only log files or large datasets, avoid `read_text().splitlines()`. Use an internal instance cache (e.g., `_entry_count`) that increments on writes to avoid O(N) recalculations. For reading the tail of a file, use a bounded iterator like `collections.deque(file_object, maxlen=N)` to read lines iteratively without loading the entire file into memory.
