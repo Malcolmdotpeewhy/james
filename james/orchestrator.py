@@ -19,7 +19,7 @@ from typing import Any, Optional
 
 from james.ai.plan_validator import PlanValidator
 from james.dag import ExecutionGraph, Node, NodeResult, NodeState
-from james.failure import FailureTracker
+from james.failure import FailureTracker, FailureContext
 from james.layers import LayerLevel, LayerRegistry
 from james.layers.native import NativeLayer
 from james.layers.application import ApplicationLayer
@@ -953,12 +953,13 @@ class Orchestrator:
                 return
 
             # ── Failure handling ─────────────────────────
-            failure = self.failures.record_failure(
+            context = FailureContext(
                 node_id=node.id,
                 node_name=node.name,
                 error_message=result.error or "",
                 layer_attempted=current_layer.level.value,
             )
+            failure = self.failures.record_failure(context)
 
             logger.warning(
                 f"  Node [{node.id}] attempt {attempts}/{node.retry_limit} failed: "

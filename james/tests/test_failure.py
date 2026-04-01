@@ -1,9 +1,8 @@
 """
 JAMES Unit Tests — Failure Intelligence System
 """
-import pytest
 from james.failure import (
-    FailureType, FailureClassifier, FailureTracker, RecoveryAction,
+    FailureType, FailureClassifier, FailureTracker, RecoveryAction, FailureContext
 )
 
 
@@ -80,9 +79,11 @@ class TestFailureTracker:
     def test_record_and_track(self):
         tracker = FailureTracker()
         record = tracker.record_failure(
-            node_id="n1",
-            node_name="test",
-            error_message="Connection timed out",
+            FailureContext(
+                node_id="n1",
+                node_name="test",
+                error_message="Connection timed out",
+            )
         )
         assert record.failure_type == FailureType.TRANSIENT
         assert not record.resolved
@@ -91,22 +92,22 @@ class TestFailureTracker:
 
     def test_mark_resolved(self):
         tracker = FailureTracker()
-        tracker.record_failure("n1", "test", "timeout")
+        tracker.record_failure(FailureContext(node_id="n1", node_name="test", error_message="timeout"))
         tracker.mark_resolved("n1", notes="retried successfully")
         assert tracker.unresolved_count == 0
 
     def test_failure_rate(self):
         tracker = FailureTracker()
-        tracker.record_failure("n1", "test", "err1")
-        tracker.record_failure("n1", "test", "err2")
+        tracker.record_failure(FailureContext(node_id="n1", node_name="test", error_message="err1"))
+        tracker.record_failure(FailureContext(node_id="n1", node_name="test", error_message="err2"))
         tracker.mark_resolved("n1")
         rate = tracker.get_failure_rate("n1")
         assert rate == 0.5  # 1 resolved, 1 unresolved out of 2
 
     def test_get_history(self):
         tracker = FailureTracker()
-        tracker.record_failure("n1", "test", "err1")
-        tracker.record_failure("n2", "test2", "err2")
+        tracker.record_failure(FailureContext(node_id="n1", node_name="test", error_message="err1"))
+        tracker.record_failure(FailureContext(node_id="n2", node_name="test2", error_message="err2"))
         history = tracker.get_history()
         assert len(history) == 2
         assert history[0]["node_id"] == "n1"
