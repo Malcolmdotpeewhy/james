@@ -62,6 +62,12 @@ class FileWatcher:
 
     DEFAULT_POLL_INTERVAL = 3.0  # seconds
 
+    # Static data structure for skipped directories to avoid reallocation inside os.walk loop
+    IGNORE_DIRS = {
+        ".git", "__pycache__", "node_modules", ".venv",
+        "venv", "dist", "build", ".tox",
+    }
+
     def __init__(self, orchestrator=None, poll_interval: float = None):
         self.orch = orchestrator
         self._poll_interval = poll_interval or self.DEFAULT_POLL_INTERVAL
@@ -246,20 +252,28 @@ class FileWatcher:
         try:
             for root, dirs, files in os.walk(rule.directory):
                 # Skip common directories
-                dirs[:] = [d for d in dirs if d not in {
-                    ".git", "__pycache__", "node_modules", ".venv",
-                    "venv", "dist", "build", ".tox",
-                }]
+                dirs[:] = [d for d in dirs if d not in self.IGNORE_DIRS]
 
                 for f in files:
                     full_path = os.path.join(root, f)
 
                     # Check include patterns
-                    if not any(fnmatch.fnmatch(f, p) for p in rule.patterns):
+                    # ⚡ Bolt: Avoid generator overhead for property evaluated on every orchestration tick
+                    included = False
+                    for p in rule.patterns:
+                        if fnmatch.fnmatch(f, p):
+                            included = True
+                            break
+                    if not included:
                         continue
 
                     # Check exclude patterns
-                    if any(fnmatch.fnmatch(f, p) for p in rule.exclude):
+                    excluded = False
+                    for p in rule.exclude:
+                        if fnmatch.fnmatch(f, p):
+                            excluded = True
+                            break
+                    if excluded:
                         continue
 
                     try:

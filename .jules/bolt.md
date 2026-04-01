@@ -13,3 +13,7 @@
 ## 2024-04-01 - [O(1) Audit Log Count]
 **Learning:** Frequent calls to `entry_count` on `james/security.py`'s `AuditLog` caused an O(N) memory and I/O penalty because it read the entire log file, split it into lines, and summed them using a generator expression.
 **Action:** Implemented caching for `entry_count`. Upon first access, it reads the file iteratively avoiding `read_text().splitlines()`. Successive records increment this cached count, making `entry_count` an O(1) operation. We also optimized `read_recent` by utilizing `collections.deque` and tail-reading the log instead of loading the entire string.
+
+## 2024-04-01 - [O(1) Data Structures in Polling Loops]
+**Learning:** In tight polling loops like `FileWatcher._scan_directory` (`james/watcher.py`) that call `os.walk`, redefining static sets inside the loop (e.g., `{".git", "__pycache__", ...}`) forces unnecessary reallocations on every iteration. Additionally, using `any()` with generator expressions for filtering files adds measurable frame allocation and function call overhead.
+**Action:** When writing or optimizing frequently polling loops or hot paths, hoist static data structures to class-level constants. Replace inline generators passed to `any()`, `all()`, or `sum()` with standard `for` loops utilizing early `break` or `return` to avoid per-iteration overhead.
