@@ -1,7 +1,6 @@
 """
 JAMES Unit Tests — Verification Engine
 """
-import pytest
 from unittest.mock import patch
 from james.verification import (
     Condition, VerificationEngine, VerificationStatus,
@@ -124,6 +123,31 @@ class TestVerificationEngine:
         assert "ValueError" in error
 
 
+
+    def test_verify_preconditions_with_context(self):
+        engine = VerificationEngine()
+        context = {"is_ready": True}
+        conditions = [
+            Condition(name="check_context", check=lambda ctx: ctx.get("is_ready", False))
+        ]
+        result = engine.verify_preconditions(conditions, context=context)
+        assert result.status == VerificationStatus.PASS
+        assert result.checks_passed == 1
+
+    def test_verify_preconditions_global_and_local(self):
+        engine = VerificationEngine()
+        engine.add_global_precondition(
+            Condition(name="global", check=lambda: True)
+        )
+        conditions = [
+            Condition(name="local", check=lambda: True)
+        ]
+        result = engine.verify_preconditions(conditions)
+        assert result.status == VerificationStatus.PASS
+        assert result.checks_total == 2
+        assert result.checks_passed == 2
+
+
 class TestPrebuiltConditions:
     def test_file_exists_true(self, tmp_path):
         f = tmp_path / "test.txt"
@@ -156,7 +180,16 @@ class TestPrebuiltConditions:
         passed, _ = cond.evaluate()
         assert passed is False
 
-    def test_command_available(self):
+    @patch("shutil.which")
+    def test_command_available(self, mock_which):
+        # Test available
+        mock_which.return_value = "/usr/bin/python"
         cond = command_available_condition("python")
         passed, _ = cond.evaluate()
-        assert passed is False
+        assert passed is True
+
+        # Test not available
+        mock_which.return_value = None
+        cond2 = command_available_condition("nonexistent_cmd")
+        passed2, _ = cond2.evaluate()
+        assert passed2 is False
