@@ -27,7 +27,6 @@ import subprocess
 import sys
 import tempfile
 import time
-from typing import Any, Optional
 
 logger = logging.getLogger("james.evolution")
 

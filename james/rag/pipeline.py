@@ -20,8 +20,6 @@ import json
 import logging
 import os
 import time
-from pathlib import Path
-from typing import Optional
 
 from james.memory.vectors import VectorStore
 from james.rag.chunker import DocumentChunker

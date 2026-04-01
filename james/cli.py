@@ -17,10 +17,8 @@ from __future__ import annotations
 
 import io
 import json
-import os
 import sys
 import time
-from typing import Optional
 
 # Force UTF-8 stdout on Windows to prevent charmap errors
 if sys.platform == "win32":

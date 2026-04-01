@@ -5,7 +5,6 @@ Tests for Phase 3: Vector Store, RAG Pipeline, and Capability Expander.
 import os
 import sys
 import tempfile
-import time
 import unittest
 
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", ".."))

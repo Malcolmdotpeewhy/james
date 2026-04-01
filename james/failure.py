@@ -252,7 +252,10 @@ class FailureTracker:
         records = [r for r in self._records if r.node_id == node_id]
         if not records:
             return 0.0
-        failed = sum(1 for r in records if not r.resolved)
+        failed = 0
+        for r in records:
+            if not r.resolved:
+                failed += 1
         return failed / len(records)
 
     def get_history(self, limit: int = 50) -> list[dict]:

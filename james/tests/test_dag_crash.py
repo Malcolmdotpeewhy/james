@@ -4,7 +4,7 @@ import sys
 sys.modules['numpy'] = MagicMock()
 
 from james.orchestrator import Orchestrator
-from james.dag import ExecutionGraph, Node, NodeState, NodeResult
+from james.dag import ExecutionGraph, Node, NodeState
 
 class TestDAGCrashRecovery(unittest.TestCase):
     def test_node_crash_recovery(self):

@@ -257,7 +257,11 @@ class AuditLog:
         # ⚡ Bolt: Cache entry count to prevent O(N) I/O operations on frequent access
         if self._cached_entry_count is None:
             with open(self._path, "rb") as f:
-                self._cached_entry_count = sum(1 for _ in f if _.strip())
+                count = 0
+                for line in f:
+                    if line.strip():
+                        count += 1
+                self._cached_entry_count = count
         return self._cached_entry_count
 
 

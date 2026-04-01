@@ -1,6 +1,5 @@
 import unittest
 import os
-import json
 import time
 from unittest.mock import MagicMock, patch
 from james.evolution.expander import CapabilityExpander, GapAnalysis

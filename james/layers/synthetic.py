@@ -15,7 +15,6 @@ import os
 import subprocess
 import tempfile
 import time
-from typing import Any
 
 from james.layers import ControlLayer, LayerLevel, LayerResult
 

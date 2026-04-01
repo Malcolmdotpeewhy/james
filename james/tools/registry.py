@@ -11,17 +11,15 @@ import hashlib
 import json
 import logging
 import os
-import platform
 import shutil
 import socket
 import time
 import zipfile
 from datetime import datetime
 from pathlib import Path
-from typing import Any, Callable, Optional
+from typing import Any, Callable
 from urllib import request as urllib_request
 from urllib.error import URLError
-from urllib.parse import urlparse
 
 logger = logging.getLogger("james.tools")
 
@@ -600,7 +598,10 @@ def _tool_file_info(path: str) -> dict:
     }
     if p.is_dir():
         try:
-            info["children"] = sum(1 for _ in p.iterdir())
+            count = 0
+            for _ in p.iterdir():
+                count += 1
+            info["children"] = count
         except Exception:
             pass
     return info
@@ -1109,7 +1110,7 @@ def _tool_file_delete(path: str, confirm: bool = False) -> dict:
         if not os.path.exists(resolved):
             return {"error": f"File not found: {path}"}
         if os.path.isdir(resolved):
-            return {"error": f"Path is a directory. Use a shell command to delete directories."}
+            return {"error": "Path is a directory. Use a shell command to delete directories."}
         size = os.path.getsize(resolved)
         os.remove(resolved)
         logger.warning(f"file_delete: DELETED {resolved} ({_human_size(size)})")

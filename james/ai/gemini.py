@@ -17,7 +17,7 @@ import json
 import logging
 import os
 import time
-from typing import Any, Optional
+from typing import Optional
 
 logger = logging.getLogger("james.ai")
 

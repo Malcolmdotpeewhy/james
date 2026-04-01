@@ -21,3 +21,7 @@
 ## 2024-04-01 - [Composite Index for Time-Series Queries]
 **Learning:** SQLite cannot use two separate single-column indexes (`node_id` and `timestamp`) efficiently for a query that filters on one column and sorts on the other (`WHERE node_id = ? ORDER BY timestamp DESC`). It must choose one index and perform an expensive in-memory sort or full table scan.
 **Action:** Always create a composite index `(node_id, timestamp DESC)` for time-series metrics tables to eliminate in-memory sorting, achieving dramatic speedups (e.g., ~200x) for the most common access patterns.
+
+## 2024-04-02 - [Python Generator Overhead in Class Properties]
+**Learning:** Returning `sum(1 for ...)` inside heavily accessed methods or properties (like `status()` or `entry_count()`) introduces frame allocation and generator iteration overhead.
+**Action:** Replaced `sum(1 for ...)` generator expressions with standard `for` loops and accumulator variables (`count += 1`) across `james/plugins.py`, `james/failure.py`, `james/security.py`, and `james/tools/registry.py` to optimize hot paths.

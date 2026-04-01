@@ -17,7 +17,7 @@ import logging
 import os
 import subprocess
 import time
-from typing import Any, Optional
+from typing import Optional
 
 from james.layers import ControlLayer, LayerLevel, LayerResult
 

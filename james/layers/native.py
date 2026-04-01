@@ -15,7 +15,6 @@ import logging
 import os
 import subprocess
 import time
-from typing import Any, Optional
 
 from james.layers import ControlLayer, LayerLevel, LayerResult
 
@@ -270,7 +269,7 @@ class NativeLayer(ControlLayer):
             except FileNotFoundError:
                 return LayerResult(success=False, error=f"Registry key not found: {key_path}")
         else:
-            return LayerResult(success=False, error=f"Registry write ops gated by security policy")
+            return LayerResult(success=False, error="Registry write ops gated by security policy")
 
     # ── WMI ──────────────────────────────────────────────────────
 
