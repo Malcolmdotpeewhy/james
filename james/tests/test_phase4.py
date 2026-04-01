@@ -77,7 +77,7 @@ class TestFileWatcher(unittest.TestCase):
         self.assertIsNot(thread1, thread2)
 
     def test_glob_pattern(self):
-        rule_id = self.watcher.watch(
+        self.watcher.watch(
             self.tmpdir, task="!echo py changed", patterns=["*.py"]
         )
         rules = self.watcher.list_rules()
@@ -97,10 +97,63 @@ class TestFileWatcher(unittest.TestCase):
         self.assertTrue(status["running"])
 
     def test_debounce_setting(self):
-        rule_id = self.watcher.watch(
+        self.watcher.watch(
             self.tmpdir, task="!echo", debounce=5.0)
         rules = self.watcher.list_rules()
         self.assertEqual(rules[0]["debounce_seconds"], 5.0)
+
+
+    def test_watch_exclude_patterns(self):
+        self.watcher.watch(
+            self.tmpdir, task="!echo", exclude=["*.tmp", "*.log"]
+        )
+        rules = self.watcher.list_rules()
+        self.assertEqual(rules[0]["exclude"], ["*.tmp", "*.log"])
+
+    def test_watch_absolute_path_conversion(self):
+        import os
+        cwd = os.getcwd()
+        os.chdir(self.tmpdir)
+        try:
+            self.watcher.watch(".", task="!echo")
+            rules = self.watcher.list_rules()
+            self.assertEqual(rules[0]["directory"], os.path.abspath(self.tmpdir))
+        finally:
+            os.chdir(cwd)
+
+    def test_watch_initial_snapshot(self):
+        import os
+        test_file = os.path.join(self.tmpdir, "init.txt")
+        with open(test_file, "w") as f:
+            f.write("data")
+
+        rule_id = self.watcher.watch(self.tmpdir, task="!echo")
+
+        self.assertIn(rule_id, self.watcher._snapshots)
+        snapshot = self.watcher._snapshots[rule_id]
+
+        self.assertIn(test_file, snapshot)
+        self.assertGreater(snapshot[test_file], 0.0)
+
+    def test_watch_defaults(self):
+        self.watcher.watch(self.tmpdir, task="!echo")
+        rules = self.watcher.list_rules()
+        self.assertEqual(rules[0]["patterns"], ["*"])
+        self.assertEqual(rules[0]["exclude"], [])
+
+    def test_watch_debounce_default(self):
+        self.watcher.watch(self.tmpdir, task="!echo")
+        rules = self.watcher.list_rules()
+        self.assertEqual(rules[0]["debounce_seconds"], 2.0)
+
+    def test_watch_rule_id_increment(self):
+        rule_id_1 = self.watcher.watch(self.tmpdir, task="!echo")
+        rule_id_2 = self.watcher.watch(self.tmpdir, task="!echo")
+
+        self.assertNotEqual(rule_id_1, rule_id_2)
+        # Should be formatted as watch_1, watch_2, etc.
+        self.assertEqual(rule_id_1, "watch_1")
+        self.assertEqual(rule_id_2, "watch_2")
 
     def test_multiple_rules(self):
         d1 = tempfile.mkdtemp()
