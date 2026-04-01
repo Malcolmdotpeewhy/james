@@ -21,8 +21,7 @@ import os
 import threading
 import time
 from dataclasses import dataclass, field
-from pathlib import Path
-from typing import Any, Callable, Optional
+from typing import Optional
 
 logger = logging.getLogger("james.watcher")
 
@@ -276,10 +275,18 @@ class FileWatcher:
     # ── Status ───────────────────────────────────────────────────
 
     def status(self) -> dict:
+        # ⚡ Bolt: Avoid generator overhead for property evaluated on every orchestration tick
+        active_rules = 0
+        total_triggers = 0
+        for r in self._rules.values():
+            if r.enabled:
+                active_rules += 1
+            total_triggers += r.trigger_count
+
         return {
             "running": self.is_running,
             "poll_interval": self._poll_interval,
             "rules": len(self._rules),
-            "active_rules": sum(1 for r in self._rules.values() if r.enabled),
-            "total_triggers": sum(r.trigger_count for r in self._rules.values()),
+            "active_rules": active_rules,
+            "total_triggers": total_triggers,
         }
