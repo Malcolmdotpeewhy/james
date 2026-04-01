@@ -16,10 +16,9 @@ from __future__ import annotations
 import logging
 import time
 from dataclasses import dataclass, field
-from typing import Any, Optional
 
 from james.memory.store import MemoryStore
-from james.skills.skill import Skill, SkillStore
+from james.skills.skill import SkillStore
 
 logger = logging.getLogger("james.optimizer")
 
@@ -75,18 +74,42 @@ class Optimizer:
         if not metrics:
             return {"skill_id": skill_id, "data_points": 0}
 
-        successes = sum(1 for m in metrics if m.get("success"))
-        durations = [m["duration_ms"] for m in metrics if m.get("duration_ms")]
+        # ⚡ Bolt: Replaced multiple generator expressions and list comprehensions
+        # with a single loop to calculate metrics, avoiding O(N) redundant iterations
+        successes = 0
+        recent_failures = 0
+        durations = []
+
+        for i, m in enumerate(metrics):
+            if m.get("success"):
+                successes += 1
+            elif i < 5:
+                recent_failures += 1
+
+            if "duration_ms" in m:
+                durations.append(m["duration_ms"])
+
+        data_points = len(metrics)
+        durations_count = len(durations)
+
+        if durations_count > 0:
+            durations.sort()
+            avg_duration = sum(durations) / durations_count
+            min_duration = durations[0]
+            max_duration = durations[-1]
+            p95_duration = durations[int(durations_count * 0.95)] if durations_count > 1 else 0
+        else:
+            avg_duration = min_duration = max_duration = p95_duration = 0
 
         return {
             "skill_id": skill_id,
-            "data_points": len(metrics),
-            "success_rate": successes / len(metrics) if metrics else 0,
-            "avg_duration_ms": sum(durations) / len(durations) if durations else 0,
-            "min_duration_ms": min(durations) if durations else 0,
-            "max_duration_ms": max(durations) if durations else 0,
-            "p95_duration_ms": sorted(durations)[int(len(durations) * 0.95)] if len(durations) > 1 else 0,
-            "recent_failures": sum(1 for m in metrics[:5] if not m.get("success")),
+            "data_points": data_points,
+            "success_rate": successes / data_points if data_points else 0,
+            "avg_duration_ms": avg_duration,
+            "min_duration_ms": min_duration,
+            "max_duration_ms": max_duration,
+            "p95_duration_ms": p95_duration,
+            "recent_failures": recent_failures,
         }
 
     # ── Phase 2: Diagnose ────────────────────────────────────────
