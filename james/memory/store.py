@@ -40,6 +40,13 @@ class MemoryStore:
         os.makedirs(os.path.dirname(db_path) or ".", exist_ok=True)
         self._lock = threading.Lock()
         self._short_term: dict[str, Any] = {}
+
+        # ⚡ Bolt: Persistent SQLite connection to avoid overhead of reconnecting on every query
+        self._conn = sqlite3.connect(self._db_path, check_same_thread=False, timeout=10)
+        self._conn.row_factory = sqlite3.Row
+        self._conn.execute("PRAGMA journal_mode=WAL")
+        self._conn.execute("PRAGMA busy_timeout=5000")
+
         self._init_db()
 
     def _init_db(self) -> None:
@@ -94,12 +101,8 @@ class MemoryStore:
             """)
 
     def _connect(self) -> sqlite3.Connection:
-        """Create a thread-safe SQLite connection."""
-        conn = sqlite3.connect(self._db_path, timeout=10)
-        conn.row_factory = sqlite3.Row
-        conn.execute("PRAGMA journal_mode=WAL")
-        conn.execute("PRAGMA busy_timeout=5000")
-        return conn
+        """Return the persistent SQLite connection."""
+        return self._conn
 
     # ── Short-Term Memory ────────────────────────────────────────
 
