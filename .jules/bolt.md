@@ -9,3 +9,7 @@
 ## 2024-04-01 - [Python Generator Overhead in Hot Paths]
 **Learning:** Using generator expressions within `all()`, `any()`, and `sum()` in frequently accessed properties (like `is_complete`, `has_failures`, `progress`) and functions (like `get_ready_nodes` in `james/dag.py`) introduces significant function call and frame allocation overhead in Python. When evaluated heavily inside an orchestrator execution loop, these generators become a measurable bottleneck.
 **Action:** Replace generator expressions in hot paths with standard `for` loops utilizing early returns (`break` or `return`). This simple optimization yielded a ~1.7x speedup in the DAG ready-node resolution and status-checking loop without sacrificing readability.
+
+## 2024-05-15 - [O(1) AuditLog entry_count property caching]
+**Learning:** Frequently accessing properties that read append-only log files (like computing `entry_count` via `path.read_text().splitlines()`) causes severe O(N) memory allocations and I/O bottlenecks. In orchestrator loops, evaluating this property repeatedly results in performance degradation over time as the log grows.
+**Action:** Implemented caching for the `entry_count` property inside `AuditLog`. The count is now tracked via a private instance variable `_cached_entry_count` initialized lazily on the first property access, and then incremented in O(1) time within the `record()` method.

@@ -208,6 +208,7 @@ class AuditLog:
         self._path.parent.mkdir(parents=True, exist_ok=True)
         if not self._path.exists():
             self._path.touch()
+        self._cached_entry_count = None
 
     def record(self, entry: AuditEntry) -> AuditEntry:
         """Record an operation to the audit log."""
@@ -223,6 +224,9 @@ class AuditLog:
 
         with open(self._path, "a", encoding="utf-8") as f:
             f.write(line + "\n")
+
+        if self._cached_entry_count is not None:
+            self._cached_entry_count += 1
 
         return entry
 
@@ -242,9 +246,15 @@ class AuditLog:
     @property
     def entry_count(self) -> int:
         """Total number of audit entries."""
+        if self._cached_entry_count is not None:
+            return self._cached_entry_count
+
         if not self._path.exists():
+            self._cached_entry_count = 0
             return 0
-        return sum(1 for _ in self._path.read_text(encoding="utf-8").strip().splitlines() if _)
+
+        self._cached_entry_count = sum(1 for _ in self._path.read_text(encoding="utf-8").strip().splitlines() if _)
+        return self._cached_entry_count
 
 
 class RestorePointManager:
