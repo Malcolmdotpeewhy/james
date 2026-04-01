@@ -15,7 +15,7 @@ import time
 from dataclasses import dataclass, field
 from enum import Enum
 from pathlib import Path
-from typing import Any, Optional
+from typing import Optional
 
 try:
     import yaml
@@ -208,6 +208,7 @@ class AuditLog:
         self._path.parent.mkdir(parents=True, exist_ok=True)
         if not self._path.exists():
             self._path.touch()
+        self._entry_count = -1  # Lazy load
 
     def record(self, entry: AuditEntry) -> AuditEntry:
         """Record an operation to the audit log."""
@@ -224,15 +225,22 @@ class AuditLog:
         with open(self._path, "a", encoding="utf-8") as f:
             f.write(line + "\n")
 
+        if self._entry_count != -1:
+            self._entry_count += 1
+
         return entry
 
     def read_recent(self, count: int = 50) -> list[dict]:
         """Read the most recent N audit entries."""
         if not self._path.exists():
             return []
-        lines = self._path.read_text(encoding="utf-8").strip().splitlines()
+        # ⚡ Bolt: Use tail-like reading instead of loading the entire file into memory
+        import collections
+        with open(self._path, "r", encoding="utf-8") as f:
+            lines = collections.deque(f, count)
+        lines = [line.strip() for line in lines if line.strip()]
         entries = []
-        for line in lines[-count:]:
+        for line in lines:
             try:
                 entries.append(json.loads(line))
             except json.JSONDecodeError:
@@ -244,7 +252,10 @@ class AuditLog:
         """Total number of audit entries."""
         if not self._path.exists():
             return 0
-        return sum(1 for _ in self._path.read_text(encoding="utf-8").strip().splitlines() if _)
+        if self._entry_count == -1:
+            with open(self._path, "r", encoding="utf-8") as f:
+                self._entry_count = sum(1 for line in f if line.strip())
+        return self._entry_count
 
 
 class RestorePointManager:
