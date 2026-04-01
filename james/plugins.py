@@ -22,8 +22,6 @@ import importlib.util
 import json
 import logging
 import os
-import sys
-from pathlib import Path
 from typing import Any, Optional
 
 logger = logging.getLogger("james.plugins")
@@ -241,9 +239,13 @@ class PluginManager:
     # ── Status ───────────────────────────────────────────────────
 
     def status(self) -> dict:
+        loaded_count = 0
+        for p in self._plugins.values():
+            if p.loaded:
+                loaded_count += 1
         return {
             "plugins_dir": self._plugins_dir,
             "total": len(self._plugins),
-            "loaded": sum(1 for p in self._plugins.values() if p.loaded),
+            "loaded": loaded_count,
             "plugins": self.list_plugins(),
         }

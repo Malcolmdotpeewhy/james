@@ -18,7 +18,7 @@ import os
 import threading
 import time
 from collections import deque
-from typing import Any, Optional
+from typing import Optional
 
 logger = logging.getLogger("james.health")
 

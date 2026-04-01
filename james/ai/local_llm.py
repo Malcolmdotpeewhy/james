@@ -23,9 +23,8 @@ import os
 import subprocess
 import time
 from pathlib import Path
-from typing import Any, Optional
+from typing import Optional
 from urllib import request as urllib_request
-from urllib.error import URLError
 
 logger = logging.getLogger("james.ai.local")
 

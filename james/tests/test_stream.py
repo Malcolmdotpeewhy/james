@@ -1,5 +1,3 @@
-import pytest
-import queue
 from james.stream import EventBus, SSEStreamer
 
 

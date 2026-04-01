@@ -14,7 +14,6 @@ import json
 import logging
 import subprocess
 import time
-from typing import Any, Optional
 
 from james.layers import ControlLayer, LayerLevel, LayerResult
 

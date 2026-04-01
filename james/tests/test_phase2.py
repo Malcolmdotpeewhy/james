@@ -5,7 +5,6 @@ Tests for Plan Validator, Model Router, and Task Scheduler.
 import os
 import sys
 import tempfile
-import time
 import unittest
 
 # Ensure project root is on PYTHONPATH
@@ -326,7 +325,7 @@ class TestTaskScheduler(unittest.TestCase):
         self.assertIn("interval_human", d)
 
     def test_interval_human_readable(self):
-        from james.scheduler import ScheduledTask, TaskSchedule
+        from james.scheduler import ScheduledTask
         task = ScheduledTask(
             id="test", name="test", task="test", schedule_type="interval",
             interval_seconds=3600, next_run=0, last_run=None,

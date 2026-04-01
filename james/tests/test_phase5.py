@@ -5,7 +5,6 @@ Tests for Phase 5: Health Monitor, Plugin Architecture, Multi-Agent Orchestratio
 import os
 import sys
 import tempfile
-import time
 import unittest
 import json
 
@@ -123,7 +122,7 @@ def unregister(registry):
 
 class TestMultiAgent(unittest.TestCase):
     def setUp(self):
-        from james.agents import AgentCoordinator, Agent, AgentRole, AgentResult
+        from james.agents import AgentCoordinator
         self.coord = AgentCoordinator()
         
     def test_agent_registration(self):

@@ -1,11 +1,8 @@
 """
 JAMES Unit Tests — Skill System
 """
-import json
-import os
 import tempfile
 
-import pytest
 from james.skills.skill import Skill, SkillStore
 
 

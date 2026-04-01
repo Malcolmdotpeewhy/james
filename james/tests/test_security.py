@@ -1,11 +1,9 @@
 """
 JAMES Unit Tests — Security Layer
 """
-import json
 import os
 import tempfile
 
-import pytest
 from james.security import (
     AuditEntry, AuditLog, OpClass, RestorePointManager, SecurityPolicy,
     EvolutionBoundary,
