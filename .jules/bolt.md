@@ -25,3 +25,7 @@
 ## 2024-04-02 - [Python Generator Overhead in Class Properties]
 **Learning:** Returning `sum(1 for ...)` inside heavily accessed methods or properties (like `status()` or `entry_count()`) introduces frame allocation and generator iteration overhead.
 **Action:** Replaced `sum(1 for ...)` generator expressions with standard `for` loops and accumulator variables (`count += 1`) across `james/plugins.py`, `james/failure.py`, `james/security.py`, and `james/tools/registry.py` to optimize hot paths.
+
+## 2024-05-24 - [Composite Index for Time-Series Queries in meta and long_term]
+**Learning:** Similar to the metrics table, querying the `meta` and `long_term` tables filtering by `skill_id` or `category` and ordering by `timestamp DESC` or `updated_at DESC` triggers an in-memory sort without a covering index.
+**Action:** Always create a composite index `(category, updated_at DESC)` and `(skill_id, timestamp DESC)` for tables to eliminate in-memory sorting and improve query performance.
