@@ -148,6 +148,8 @@ class TaskScheduler:
         os.makedirs(os.path.dirname(self.db_path), exist_ok=True)
         with sqlite3.connect(self.db_path) as conn:
             conn.execute(self._TABLE_SCHEMA)
+            # Optimize high-frequency polling
+            conn.execute("CREATE INDEX IF NOT EXISTS idx_tasks_due ON scheduled_tasks(enabled, next_run)")
             conn.commit()
 
     def _get_conn(self) -> sqlite3.Connection:
