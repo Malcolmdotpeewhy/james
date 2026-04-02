@@ -25,3 +25,7 @@
 ## 2024-04-02 - [Python Generator Overhead in Class Properties]
 **Learning:** Returning `sum(1 for ...)` inside heavily accessed methods or properties (like `status()` or `entry_count()`) introduces frame allocation and generator iteration overhead.
 **Action:** Replaced `sum(1 for ...)` generator expressions with standard `for` loops and accumulator variables (`count += 1`) across `james/plugins.py`, `james/failure.py`, `james/security.py`, and `james/tools/registry.py` to optimize hot paths.
+
+## 2025-02-10 - [Composite Index for Polling Queries]
+**Learning:** In the JAMES Task Scheduler (`james/scheduler.py`), `_check_due_tasks()` polls the `scheduled_tasks` table frequently, filtering by `enabled=1` and `next_run <= now`. Without an index, SQLite performs a full table scan, which leads to high overhead when there are many tasks.
+**Action:** Adding a composite index on `(enabled, next_run)` allows SQLite to efficiently find tasks that are enabled and due, avoiding costly table scans during high-frequency polling loops.
