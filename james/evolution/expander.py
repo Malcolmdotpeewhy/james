@@ -142,7 +142,6 @@ class ToolSandbox:
             ("open(", None),  # Check context — writing is dangerous
         ]
 
-        code_lower = code.lower()
         for pattern, description in dangerous_patterns:
             if pattern in code:
                 if pattern == "open(" and "'w'" not in code and "'a'" not in code:
@@ -443,11 +442,14 @@ Return ONLY the valid Python code, no markdown or text wrappers. Do not wrap cod
         # First, search for similar existing tools in the registry
         available = self.orch.tools.list_tools()
         similar = []
+        # Optimization: hoist loop-invariant operations outside the loop
+        tool_name_lower = tool_name.lower()
+        tool_name_words = tool_name_lower.split("_")
         for tool in available:
             name = tool["name"].lower()
             desc = tool.get("description", "").lower()
-            if (tool_name.lower() in name or tool_name.lower() in desc or
-                    any(word in name for word in tool_name.lower().split("_"))):
+            if (tool_name_lower in name or tool_name_lower in desc or
+                    any(word in name for word in tool_name_words)):
                 similar.append(tool["name"])
 
         # If we have similar tools, suggest them as an alternative but DO NOT block generation
