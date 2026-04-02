@@ -148,6 +148,10 @@ class TaskScheduler:
         os.makedirs(os.path.dirname(self.db_path), exist_ok=True)
         with sqlite3.connect(self.db_path) as conn:
             conn.execute(self._TABLE_SCHEMA)
+            # ⚡ Bolt: Added composite index on (enabled, next_run) to optimize
+            # the frequent polling query in _check_due_tasks which filters
+            # by enabled=1 and next_run <= now, eliminating in-memory sorting.
+            conn.execute("CREATE INDEX IF NOT EXISTS idx_sched_enabled_next_run ON scheduled_tasks(enabled, next_run)")
             conn.commit()
 
     def _get_conn(self) -> sqlite3.Connection:
