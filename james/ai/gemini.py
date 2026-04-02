@@ -215,9 +215,12 @@ def decompose_task(user_input: str, context: Optional[dict] = None,
             chain_lower = reasoning_chain.lower()
             uncertainty_markers = ["don't know", "not sure", "unsure", "need to search",
                                    "need to look", "cannot find", "no information"]
-            if any(marker in chain_lower for marker in uncertainty_markers):
-                result["_confidence"] = "low"
-                logger.info("CoT self-check: reasoning suggests uncertainty")
+            # ⚡ Bolt: Avoid generator expression overhead
+            for marker in uncertainty_markers:
+                if marker in chain_lower:
+                    result["_confidence"] = "low"
+                    logger.info("CoT self-check: reasoning suggests uncertainty")
+                    break
 
         result["_ai_duration_ms"] = elapsed
         result["_model"] = _model_name

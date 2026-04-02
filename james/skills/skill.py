@@ -211,13 +211,18 @@ class SkillStore:
     def search(self, query: str) -> list[Skill]:
         """Search skills by name, description, or tags."""
         query_lower = query.lower()
+        # ⚡ Bolt: Avoid generator expression overhead in search loop
         results = []
         for skill in self._cache.values():
-            if (
-                query_lower in skill.name.lower()
-                or query_lower in skill.description.lower()
-                or any(query_lower in tag.lower() for tag in skill.tags)
-            ):
+            match = False
+            if query_lower in skill.name.lower() or query_lower in skill.description.lower():
+                match = True
+            else:
+                for tag in skill.tags:
+                    if query_lower in tag.lower():
+                        match = True
+                        break
+            if match:
                 results.append(skill)
         return sorted(results, key=lambda s: s.confidence_score, reverse=True)
 

@@ -116,7 +116,13 @@ class ModelRouter:
             best_match = None
             for model in self.models:
                 model_name_lower = model.get("name", "").lower()
-                if any(kw in model_name_lower for kw in tier_config["model_keywords"]):
+                # ⚡ Bolt: Avoid generator expression overhead
+                match_found = False
+                for kw in tier_config["model_keywords"]:
+                    if kw in model_name_lower:
+                        match_found = True
+                        break
+                if match_found:
                     best_match = model.get("path")
                     break
 
