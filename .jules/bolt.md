@@ -25,3 +25,7 @@
 ## 2024-04-02 - [Python Generator Overhead in Class Properties]
 **Learning:** Returning `sum(1 for ...)` inside heavily accessed methods or properties (like `status()` or `entry_count()`) introduces frame allocation and generator iteration overhead.
 **Action:** Replaced `sum(1 for ...)` generator expressions with standard `for` loops and accumulator variables (`count += 1`) across `james/plugins.py`, `james/failure.py`, `james/security.py`, and `james/tools/registry.py` to optimize hot paths.
+
+## 2024-04-02 - [O(1) Data Structures during Instantiation]
+**Learning:** Initializing sets of static constants (like `stop_words`) inside function or method bodies triggers a `BUILD_SET` instruction at runtime on every invocation. If the method runs repeatedly in a hot loop (like `_tokenize` during document ingestion), this memory allocation significantly impacts performance.
+**Action:** Always hoist collections of static constants to the class level (e.g. `VectorStore.STOP_WORDS`). Doing so ensures they are compiled and instantiated only once when the module loads, replacing repeated dynamic memory allocations with an O(1) attribute lookup.

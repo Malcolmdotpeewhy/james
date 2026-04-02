@@ -22,7 +22,6 @@ from __future__ import annotations
 
 import json
 import logging
-import math
 import os
 import re
 from collections import Counter
@@ -40,6 +39,14 @@ class VectorStore:
     No FAISS, no torch, no sentence-transformers required.
     Uses numpy for fast matrix operations on the TF-IDF vectors.
     """
+
+    STOP_WORDS = {
+        'a', 'an', 'the', 'is', 'it', 'in', 'on', 'at', 'to', 'for',
+        'of', 'and', 'or', 'but', 'not', 'this', 'that', 'with', 'from',
+        'by', 'as', 'be', 'was', 'were', 'been', 'are', 'am', 'has',
+        'had', 'have', 'do', 'does', 'did', 'will', 'would', 'could',
+        'should', 'may', 'might', 'can', 'i', 'my', 'me', 'we', 'you',
+    }
 
     def __init__(self, db_dir: str):
         self._db_dir = db_dir
@@ -211,14 +218,8 @@ class VectorStore:
         # Split on non-alphanumeric, keep meaningful tokens
         tokens = re.findall(r'[a-z0-9]+', text)
         # Remove very short tokens and stop words
-        stop_words = {
-            'a', 'an', 'the', 'is', 'it', 'in', 'on', 'at', 'to', 'for',
-            'of', 'and', 'or', 'but', 'not', 'this', 'that', 'with', 'from',
-            'by', 'as', 'be', 'was', 'were', 'been', 'are', 'am', 'has',
-            'had', 'have', 'do', 'does', 'did', 'will', 'would', 'could',
-            'should', 'may', 'might', 'can', 'i', 'my', 'me', 'we', 'you',
-        }
-        return [t for t in tokens if len(t) > 1 and t not in stop_words]
+        # ⚡ Bolt: Hoisted STOP_WORDS set allocation to class level to avoid O(1) set creation overhead on every tokenization call.
+        return [t for t in tokens if len(t) > 1 and t not in VectorStore.STOP_WORDS]
 
     # ── Persistence ──────────────────────────────────────────────
 
