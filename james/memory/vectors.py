@@ -22,7 +22,6 @@ from __future__ import annotations
 
 import json
 import logging
-import math
 import os
 import re
 from collections import Counter
@@ -50,6 +49,7 @@ class VectorStore:
         self._vocabulary: dict[str, int] = {}   # word → index
         self._idf: Optional[np.ndarray] = None  # inverse doc frequency
         self._tfidf_matrix: Optional[np.ndarray] = None  # docs × vocab
+        self._tfidf_norms: Optional[np.ndarray] = None   # cached norms for tfidf_matrix
         self._key_order: list[str] = []          # ordered list of keys
 
         self._dirty = False
@@ -101,13 +101,12 @@ class VectorStore:
             return []
 
         # Cosine similarity against all documents
-        norms = np.linalg.norm(self._tfidf_matrix, axis=1)
-        norms[norms == 0] = 1  # avoid division by zero
+        # ⚡ Bolt: Use cached norms instead of recalculating (O(1) instead of O(N*V))
         query_norm = np.linalg.norm(query_vec)
         if query_norm == 0:
             return []
 
-        similarities = self._tfidf_matrix.dot(query_vec) / (norms * query_norm)
+        similarities = self._tfidf_matrix.dot(query_vec) / (self._tfidf_norms * query_norm)
 
         # Get top-k results above threshold
         results = []
@@ -138,6 +137,7 @@ class VectorStore:
         """Rebuild the TF-IDF matrix from all documents."""
         if not self._documents:
             self._tfidf_matrix = None
+            self._tfidf_norms = None
             self._dirty = False
             return
 
@@ -156,6 +156,7 @@ class VectorStore:
 
         if vocab_size == 0:
             self._tfidf_matrix = None
+            self._tfidf_norms = None
             self._dirty = False
             return
 
@@ -178,6 +179,10 @@ class VectorStore:
 
         # TF-IDF matrix
         self._tfidf_matrix = tf_matrix * self._idf
+
+        # ⚡ Bolt: Cache document norms to prevent O(N*V) recalculation on every search
+        self._tfidf_norms = np.linalg.norm(self._tfidf_matrix, axis=1)
+        self._tfidf_norms[self._tfidf_norms == 0] = 1  # avoid division by zero
 
         self._dirty = False
         self._save()

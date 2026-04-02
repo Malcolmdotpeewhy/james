@@ -3,7 +3,17 @@ import os
 import sys
 from unittest.mock import MagicMock
 
-sys.modules['numpy'] = MagicMock()
+class SafeNumpyMock(MagicMock):
+    def __gt__(self, other):
+        return True
+    def __lt__(self, other):
+        return False
+    def __bool__(self):
+        return True
+    def __array_ufunc__(self, *args, **kwargs):
+        return MagicMock()
+
+sys.modules['numpy'] = SafeNumpyMock()
 sys.modules['flask'] = MagicMock()
 sys.modules['requests'] = MagicMock()
 

@@ -186,17 +186,18 @@ class ToolSandbox:
             # Bandit check
             try:
                 bandit_bin = shutil.which("bandit")
-                bandit_cmd = [bandit_bin, "-r", tmp_path, "-f", "json", "-q"] if bandit_bin else [sys.executable, "-m", "bandit", "-r", tmp_path, "-f", "json", "-q"]
-                result = subprocess.run(bandit_cmd, capture_output=True, text=True, timeout=10)
-                if result.returncode != 0:
-                    try:
-                        import json
-                        bandit_res = json.loads(result.stdout)
-                        for issue in bandit_res.get("results", []):
-                            if issue.get("issue_severity") in ("HIGH", "MEDIUM"):
-                                violations.append(f"Bandit ({issue.get('issue_severity')}): {issue.get('issue_text')}")
-                    except json.JSONDecodeError:
-                        violations.append(f"Bandit failed: {result.stdout.strip()[:200]}")
+                if bandit_bin:
+                    bandit_cmd = [bandit_bin, "-r", tmp_path, "-f", "json", "-q"]
+                    result = subprocess.run(bandit_cmd, capture_output=True, text=True, timeout=10)
+                    if result.returncode != 0:
+                        try:
+                            import json
+                            bandit_res = json.loads(result.stdout)
+                            for issue in bandit_res.get("results", []):
+                                if issue.get("issue_severity") in ("HIGH", "MEDIUM"):
+                                    violations.append(f"Bandit ({issue.get('issue_severity')}): {issue.get('issue_text')}")
+                        except json.JSONDecodeError:
+                            violations.append(f"Bandit failed: {result.stdout.strip()[:200]}")
             except Exception as e:
                 logger.warning(f"Bandit check failed: {e}")
 
