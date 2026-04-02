@@ -117,7 +117,6 @@ class DocumentChunker:
 
         all_chunks = []
         file_count = 0
-        glob_fn = dir_path.rglob if recursive else dir_path.glob
 
         # Skip common non-source directories
         skip_dirs = {
@@ -126,16 +125,22 @@ class DocumentChunker:
             "egg-info", ".eggs",
         }
 
-        for p in sorted(glob_fn("*")):
+        import os
+        paths_to_process = []
+        if recursive:
+            for root, dirs, files in os.walk(directory):
+                dirs[:] = [d for d in dirs if d not in skip_dirs]
+                for file in files:
+                    paths_to_process.append(Path(root) / file)
+        else:
+            for item in os.listdir(directory):
+                p = dir_path / item
+                if p.is_file():
+                    paths_to_process.append(p)
+
+        for p in sorted(paths_to_process):
             if file_count >= max_files:
                 break
-            if not p.is_file():
-                continue
-
-            # Skip files in excluded directories
-            parts = set(p.parts)
-            if parts & skip_dirs:
-                continue
 
             chunks = self.chunk_file(str(p))
             if chunks:

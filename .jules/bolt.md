@@ -29,3 +29,7 @@
 ## 2025-02-10 - [Composite Index for Polling Queries]
 **Learning:** In the JAMES Task Scheduler (`james/scheduler.py`), `_check_due_tasks()` polls the `scheduled_tasks` table frequently, filtering by `enabled=1` and `next_run <= now`. Without an index, SQLite performs a full table scan, which leads to high overhead when there are many tasks.
 **Action:** Adding a composite index on `(enabled, next_run)` allows SQLite to efficiently find tasks that are enabled and due, avoiding costly table scans during high-frequency polling loops.
+
+## 2025-04-02 - [O(N) directory traversal optimization]
+**Learning:** When recursively scanning directories to find files, using `Path.rglob('*')` followed by a filter forces an O(N) traversal of all files, including those in ignored directories (like `node_modules` or `.venv`). This causes massive performance and memory bottlenecks on large projects.
+**Action:** Replaced `Path.rglob` with `os.walk` and pruned ignored directories in-place (`dirs[:] = [d for d in dirs if d not in skip_dirs]`). This drastically improves performance by avoiding traversal of massive ignored directories.
