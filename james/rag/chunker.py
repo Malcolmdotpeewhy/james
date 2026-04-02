@@ -172,25 +172,32 @@ class DocumentChunker:
 
         chunks = []
         current_block = ""
+        # ⚡ Bolt: Maintain running word count to avoid O(N) string splitting in loop
+        current_word_count = 0
+        total_words = len(text.split())
 
         for block in blocks:
             if not block.strip():
                 continue
 
+            block_word_count = len(block.split())
+
             # If adding this block would exceed chunk size, flush
-            combined = current_block + "\n" + block if current_block else block
-            if len(combined.split()) > self.chunk_size and current_block:
+            # ⚡ Bolt: Use running integer sum for length check instead of allocating and splitting new string
+            if current_word_count + block_word_count > self.chunk_size and current_block:
                 chunks.append({
                     "text": current_block.strip(),
                     "source": source,
                     "chunk_index": len(chunks),
                     "start_word": 0,
-                    "end_word": len(current_block.split()),
-                    "total_words": len(text.split()),
+                    "end_word": current_word_count,
+                    "total_words": total_words,
                 })
                 current_block = block
+                current_word_count = block_word_count
             else:
-                current_block = combined
+                current_block = current_block + "\n" + block if current_block else block
+                current_word_count += block_word_count
 
         # Flush remaining
         if current_block.strip():
@@ -199,8 +206,8 @@ class DocumentChunker:
                 "source": source,
                 "chunk_index": len(chunks),
                 "start_word": 0,
-                "end_word": len(current_block.split()),
-                "total_words": len(text.split()),
+                "end_word": current_word_count,
+                "total_words": total_words,
             })
 
         return chunks
