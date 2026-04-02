@@ -442,11 +442,23 @@ Return ONLY the valid Python code, no markdown or text wrappers. Do not wrap cod
         # First, search for similar existing tools in the registry
         available = self.orch.tools.list_tools()
         similar = []
+        tool_name_lower = tool_name.lower()
+        tool_name_words = tool_name_lower.split("_")
+
         for tool in available:
             name = tool["name"].lower()
             desc = tool.get("description", "").lower()
-            if (tool_name.lower() in name or tool_name.lower() in desc or
-                    any(word in name for word in tool_name.lower().split("_"))):
+
+            match = False
+            if tool_name_lower in name or tool_name_lower in desc:
+                match = True
+            else:
+                for word in tool_name_words:
+                    if word in name:
+                        match = True
+                        break
+
+            if match:
                 similar.append(tool["name"])
 
         # If we have similar tools, suggest them as an alternative but DO NOT block generation

@@ -25,3 +25,7 @@
 ## 2024-04-02 - [Python Generator Overhead in Class Properties]
 **Learning:** Returning `sum(1 for ...)` inside heavily accessed methods or properties (like `status()` or `entry_count()`) introduces frame allocation and generator iteration overhead.
 **Action:** Replaced `sum(1 for ...)` generator expressions with standard `for` loops and accumulator variables (`count += 1`) across `james/plugins.py`, `james/failure.py`, `james/security.py`, and `james/tools/registry.py` to optimize hot paths.
+
+## 2024-04-02 - [Python any() Overhead in Text Search / Filtering Loops]
+**Learning:** Using `any()` with a generator expression inside nested loops (e.g., searching for keywords in lists of tags across many models or tools) introduces measurable overhead due to generator allocation.
+**Action:** Replaced `any(...)` in loops across `james/ai/local_llm.py`, `james/ai/router.py`, `james/ai/gemini.py`, `james/skills/skill.py`, and `james/evolution/expander.py` with standard `for` loops and early `break` statements to eliminate generator overhead and improve search performance.
