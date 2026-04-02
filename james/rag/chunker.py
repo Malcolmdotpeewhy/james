@@ -117,8 +117,6 @@ class DocumentChunker:
 
         all_chunks = []
         file_count = 0
-        glob_fn = dir_path.rglob if recursive else dir_path.glob
-
         # Skip common non-source directories
         skip_dirs = {
             ".git", "__pycache__", "node_modules", ".venv", "venv",
@@ -126,15 +124,31 @@ class DocumentChunker:
             "egg-info", ".eggs",
         }
 
-        for p in sorted(glob_fn("*")):
+        # ⚡ Bolt: Use os.walk and prune ignored directories in-place to avoid O(N) traversal of ignored files
+        import os
+        paths_to_process = []
+        if recursive:
+            for root, dirs, files in os.walk(str(dir_path)):
+                # Prune skipped directories
+                dirs[:] = [d for d in dirs if d not in skip_dirs]
+                for file in files:
+                    if file not in skip_dirs:
+                        paths_to_process.append(Path(root) / file)
+        else:
+            for root, dirs, files in os.walk(str(dir_path)):
+                # Non-recursive: process files in root and stop
+                for file in files:
+                    if file not in skip_dirs:
+                        paths_to_process.append(Path(root) / file)
+                break
+
+        # Sort to maintain deterministic behavior
+        paths_to_process.sort()
+
+        for p in paths_to_process:
             if file_count >= max_files:
                 break
             if not p.is_file():
-                continue
-
-            # Skip files in excluded directories
-            parts = set(p.parts)
-            if parts & skip_dirs:
                 continue
 
             chunks = self.chunk_file(str(p))
