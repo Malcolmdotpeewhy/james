@@ -557,22 +557,31 @@ def _tool_uptime() -> dict:
 
 
 def _tool_file_search(path: str = ".", pattern: str = "*", max_results: int = 50) -> list:
-    """Search for files matching a glob pattern."""
+    """Search for files matching a glob pattern.
+
+    ⚡ Bolt: Optimized recursive traversal using os.walk to avoid O(N)
+    scanning of massive ignored directories like node_modules or .venv.
+    """
     results = []
+    skip_dirs = {".git", "__pycache__", "node_modules", "venv", ".venv", "env", "build", "dist", "target", ".idea", ".vscode"}
     try:
-        for match in Path(path).rglob(pattern):
-            if len(results) >= max_results:
-                break
-            try:
-                stat = match.stat()
-                results.append({
-                    "path": str(match),
-                    "size": stat.st_size,
-                    "modified": datetime.fromtimestamp(stat.st_mtime).isoformat(),
-                    "is_dir": match.is_dir(),
-                })
-            except Exception:
-                results.append({"path": str(match), "error": "stat failed"})
+        for root, dirs, files in os.walk(path):
+            dirs[:] = [d for d in dirs if d not in skip_dirs]
+            for item in dirs + files:
+                match = Path(root) / item
+                if match.match(pattern):
+                    if len(results) >= max_results:
+                        return results
+                    try:
+                        stat = match.stat()
+                        results.append({
+                            "path": str(match),
+                            "size": stat.st_size,
+                            "modified": datetime.fromtimestamp(stat.st_mtime).isoformat(),
+                            "is_dir": match.is_dir(),
+                        })
+                    except Exception:
+                        results.append({"path": str(match), "error": "stat failed"})
     except Exception as e:
         return [{"error": str(e)}]
     return results
@@ -624,13 +633,20 @@ def _tool_dir_tree(path: str = ".", depth: int = 3) -> dict:
 
 
 def _tool_find_large_files(path: str = ".", count: int = 20, min_mb: float = 1.0) -> list:
-    """Find largest files in a directory."""
+    """Find largest files in a directory.
+
+    ⚡ Bolt: Optimized directory traversal using os.walk to drastically
+    reduce memory and I/O overhead from ignored directories.
+    """
     min_bytes = int(min_mb * 1048576)
     files = []
+    skip_dirs = {".git", "__pycache__", "node_modules", "venv", ".venv", "env", "build", "dist", "target", ".idea", ".vscode"}
     try:
-        for f in Path(path).rglob("*"):
-            if f.is_file():
+        for root, dirs, filenames in os.walk(path):
+            dirs[:] = [d for d in dirs if d not in skip_dirs]
+            for filename in filenames:
                 try:
+                    f = Path(root) / filename
                     size = f.stat().st_size
                     if size >= min_bytes:
                         files.append({"path": str(f), "size_mb": round(size / 1048576, 1)})
