@@ -47,17 +47,17 @@ class Role(Enum):
 
 _DESTRUCTIVE_KEYWORDS = {
     "rm -rf", "rmdir /s", "del /f", "format", "fdisk",
-    "Remove-Item -Recurse -Force", "Clear-Content",
-    "DROP TABLE", "DROP DATABASE", "TRUNCATE",
+    "remove-item -recurse -force", "clear-content",
+    "drop table", "drop database", "truncate",
     "reg delete", "bcdedit", "diskpart",
 }
 
 _SYSTEM_KEYWORDS = {
     "net stop", "net start", "sc config", "sc delete",
-    "Set-Service", "Stop-Service", "Restart-Service",
+    "set-service", "stop-service", "restart-service",
     "reg add", "regedit", "schtasks",
     "netsh", "wmic", "bcdedit",
-    "Set-ExecutionPolicy", "Enable-WindowsOptionalFeature",
+    "set-executionpolicy", "enable-windowsoptionalfeature",
 }
 
 _PRODUCTION_KEYWORDS = {
@@ -132,15 +132,15 @@ class SecurityPolicy:
         cmd_lower = command.lower()
 
         for kw in _DESTRUCTIVE_KEYWORDS:
-            if kw.lower() in cmd_lower:
+            if kw in cmd_lower:
                 return OpClass.DESTRUCTIVE
 
         for kw in _PRODUCTION_KEYWORDS:
-            if kw.lower() in cmd_lower:
+            if kw in cmd_lower:
                 return OpClass.PRODUCTION
 
         for kw in _SYSTEM_KEYWORDS:
-            if kw.lower() in cmd_lower:
+            if kw in cmd_lower:
                 return OpClass.SYSTEM_LEVEL
 
         return OpClass.SAFE

@@ -547,7 +547,7 @@ class Orchestrator:
                 self._active_graph = graph
                 self.audit.record(AuditEntry(
                     operation="plan_rejected",
-                    classification=OpClass.DANGEROUS,
+                    classification=OpClass.DESTRUCTIVE,
                     details=f"Rejected '{name}': {'; '.join(vr.errors)[:300]}",
                 ))
                 return graph

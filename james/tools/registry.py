@@ -999,12 +999,15 @@ _BLOCKED_PATHS = [
 ]
 
 
+_BLOCKED_PATHS_LOWER = tuple(p.lower() for p in _BLOCKED_PATHS)
+
 def _safe_path(path: str) -> str:
     """Canonicalize and validate a file path against blocked system dirs."""
     resolved = os.path.abspath(os.path.expanduser(path))
-    for blocked in _BLOCKED_PATHS:
-        if resolved.lower().startswith(blocked.lower()):
-            raise PermissionError(f"Access denied: {blocked} is a protected system path")
+    resolved_lower = resolved.lower()
+    for blocked_lower in _BLOCKED_PATHS_LOWER:
+        if resolved_lower.startswith(blocked_lower):
+            raise PermissionError(f"Access denied: {blocked_lower} is a protected system path")
     return resolved
 
 
