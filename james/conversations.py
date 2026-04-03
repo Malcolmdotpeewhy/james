@@ -70,6 +70,12 @@ class ConversationStore:
                 CREATE INDEX IF NOT EXISTS idx_messages_conv
                 ON messages(conversation_name, timestamp)
             """)
+            # ⚡ Bolt: Added composite index on updated_at to prevent O(N) full table scans
+            # and expensive in-memory sorts during list_conversations which orders by this column.
+            conn.execute("""
+                CREATE INDEX IF NOT EXISTS idx_conversations_updated
+                ON conversations(updated_at DESC)
+            """)
 
     # ── Messages ─────────────────────────────────────────────────
 
