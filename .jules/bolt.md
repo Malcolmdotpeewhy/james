@@ -33,3 +33,7 @@
 ## 2025-04-02 - [O(N) directory traversal optimization]
 **Learning:** When recursively scanning directories to find files, using `Path.rglob('*')` followed by a filter forces an O(N) traversal of all files, including those in ignored directories (like `node_modules` or `.venv`). This causes massive performance and memory bottlenecks on large projects.
 **Action:** Replaced `Path.rglob` with `os.walk` and pruned ignored directories in-place (`dirs[:] = [d for d in dirs if d not in skip_dirs]`). This drastically improves performance by avoiding traversal of massive ignored directories.
+
+## 2025-06-12 - [Composite Index for Polling Queries in Conversations]
+**Learning:** In the JAMES Conversation Persistence (`james/conversations.py`), `list_conversations()` queries the `conversations` table, ordering by `updated_at DESC`. Without an index on this field, SQLite performs a full table scan and an expensive in-memory sort, leading to slow performance.
+**Action:** Added an index on `updated_at DESC` to allow SQLite to efficiently sort the conversations by latest updated without costly full table scans.
