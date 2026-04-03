@@ -671,6 +671,14 @@ def _tool_file_hash(path: str, algorithm: str = "sha256") -> dict:
 
 def _tool_zip_create(sources: list, output: str) -> dict:
     """Create zip archive."""
+
+    # Static data structure for skipped directories to avoid reallocation inside os.walk loop
+    skip_dirs = {
+        ".git", "__pycache__", "node_modules", ".venv", "venv",
+        ".env", "dist", "build", ".tox", ".mypy_cache", ".pytest_cache",
+        "egg-info", ".eggs",
+    }
+
     with zipfile.ZipFile(output, "w", zipfile.ZIP_DEFLATED) as zf:
         count = 0
         for src in sources:
@@ -679,8 +687,11 @@ def _tool_zip_create(sources: list, output: str) -> dict:
                 zf.write(p, p.name)
                 count += 1
             elif p.is_dir():
-                for child in p.rglob("*"):
-                    if child.is_file():
+                # ⚡ Bolt: Replace Path.rglob with os.walk to prune ignored dirs and avoid O(N) traversal overhead
+                for root, dirs, files in os.walk(p):
+                    dirs[:] = [d for d in dirs if d not in skip_dirs]
+                    for file in files:
+                        child = Path(root) / file
                         zf.write(child, child.relative_to(p.parent))
                         count += 1
     return {"output": output, "files_added": count, "size": os.path.getsize(output)}

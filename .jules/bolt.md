@@ -37,3 +37,6 @@
 ## $(date +%Y-%m-%d) - SQLite Sorting Optimization
 **Learning:** When querying an SQLite table with an `ORDER BY` clause (e.g., `ORDER BY updated_at DESC LIMIT ?`), relying on a full table scan causes expensive in-memory sorts (Temp B-Tree).
 **Action:** Always ensure an index exists on the sorting column (e.g., `CREATE INDEX idx_name ON table(updated_at DESC)`) to prevent full table scans and expensive in-memory sorts.
+## $(date +%Y-%m-%d) - [O(N) zip creation optimization]
+**Learning:** When creating zip archives of directories (e.g. in `_tool_zip_create`), using `Path.rglob("*")` followed by a filter forces an O(N) traversal of all files, including those in ignored directories (like `node_modules` or `.venv`). This causes massive performance and memory bottlenecks when archiving large projects.
+**Action:** Replaced `Path.rglob` with `os.walk` and pruned ignored directories in-place (`dirs[:] = [d for d in dirs if d not in skip_dirs]`). This drastically improves performance by avoiding traversal of massive ignored directories during archive creation.
