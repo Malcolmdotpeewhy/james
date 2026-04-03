@@ -152,6 +152,9 @@ class TaskScheduler:
             # the frequent polling query in _check_due_tasks which filters
             # by enabled=1 and next_run <= now, eliminating in-memory sorting.
             conn.execute("CREATE INDEX IF NOT EXISTS idx_sched_enabled_next_run ON scheduled_tasks(enabled, next_run)")
+            # ⚡ Bolt: Added standalone index on next_run to optimize list_tasks(include_disabled=True)
+            # which sorts by next_run without the 'enabled' filter. Eliminates Temp B-Tree sorts.
+            conn.execute("CREATE INDEX IF NOT EXISTS idx_sched_next_run ON scheduled_tasks(next_run)")
             conn.commit()
 
     def _get_conn(self) -> sqlite3.Connection:
