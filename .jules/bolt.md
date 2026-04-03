@@ -37,3 +37,7 @@
 ## $(date +%Y-%m-%d) - SQLite Sorting Optimization
 **Learning:** When querying an SQLite table with an `ORDER BY` clause (e.g., `ORDER BY updated_at DESC LIMIT ?`), relying on a full table scan causes expensive in-memory sorts (Temp B-Tree).
 **Action:** Always ensure an index exists on the sorting column (e.g., `CREATE INDEX idx_name ON table(updated_at DESC)`) to prevent full table scans and expensive in-memory sorts.
+
+## $(date +%Y-%m-%d) - [SQLite ORDER BY optimization with composite indexes]
+**Learning:** Adding new composite indexes (`skill_id, timestamp`) allows SQLite to satisfy `ORDER BY` queries for items filtered by a foreign key without requiring a full table scan or expensive in-memory sorts (Temp B-Tree). For queries filtering by one column and sorting by another, a composite index is highly effective.
+**Action:** Always create composite indexes for foreign keys paired with sort keys (e.g., timestamps) to eliminate `O(N log N)` Temp B-Tree sorts.
