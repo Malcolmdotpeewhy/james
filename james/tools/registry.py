@@ -679,8 +679,12 @@ def _tool_zip_create(sources: list, output: str) -> dict:
                 zf.write(p, p.name)
                 count += 1
             elif p.is_dir():
-                for child in p.rglob("*"):
-                    if child.is_file():
+                # ⚡ Bolt: Replace Path.rglob with os.walk to avoid traversing into ignored directories
+                skip_dirs = {".git", "__pycache__", ".venv", "venv", ".tox"}
+                for root, dirs, files in os.walk(p):
+                    dirs[:] = [d for d in dirs if d not in skip_dirs]
+                    for f in files:
+                        child = Path(root) / f
                         zf.write(child, child.relative_to(p.parent))
                         count += 1
     return {"output": output, "files_added": count, "size": os.path.getsize(output)}
