@@ -41,3 +41,7 @@
 ## $(date +%Y-%m-%d) - [SQLite ORDER BY optimization with composite indexes]
 **Learning:** Adding new composite indexes (`skill_id, timestamp`) allows SQLite to satisfy `ORDER BY` queries for items filtered by a foreign key without requiring a full table scan or expensive in-memory sorts (Temp B-Tree). For queries filtering by one column and sorting by another, a composite index is highly effective.
 **Action:** Always create composite indexes for foreign keys paired with sort keys (e.g., timestamps) to eliminate `O(N log N)` Temp B-Tree sorts.
+
+## 2026-04-03 - [SQLite ORDER BY optimization with standalone indexes]
+**Learning:** A composite index like `(node_id, timestamp)` is ineffective for queries that sort by `timestamp DESC` without a `WHERE` filter on `node_id`. SQLite cannot use the second column of the index if the first column is not constrained.
+**Action:** Always create a standalone index on the sort column (e.g., `timestamp`) if there are queries that need to retrieve all records ordered by that column without filtering on the prefix column of the composite index, to avoid inefficient Temp B-Tree sorts.
