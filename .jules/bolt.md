@@ -33,3 +33,7 @@
 ## 2025-04-02 - [O(N) directory traversal optimization]
 **Learning:** When recursively scanning directories to find files, using `Path.rglob('*')` followed by a filter forces an O(N) traversal of all files, including those in ignored directories (like `node_modules` or `.venv`). This causes massive performance and memory bottlenecks on large projects.
 **Action:** Replaced `Path.rglob` with `os.walk` and pruned ignored directories in-place (`dirs[:] = [d for d in dirs if d not in skip_dirs]`). This drastically improves performance by avoiding traversal of massive ignored directories.
+
+## 2025-04-02 - [Loop-invariant code motion in List Comprehensions]
+**Learning:** O(N) operations, such as `.lower()`, `.split()`, or accessing external APIs repeatedly inside list/dict comprehensions (like `[p for p in pkgs if filter.lower() in p]`), cause unnecessary overhead. In `james/tools/registry.py`, `filter.lower()` was evaluated redundantly for every element.
+**Action:** Extract loop-invariant operations outside the comprehension to compute them exactly once. Hoisting variables (e.g., `filter_lower = filter.lower()`) provides a concrete execution speedup in lookup loops.
