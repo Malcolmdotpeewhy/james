@@ -30,7 +30,7 @@ def orch():
 class TestOrchestrator:
     def test_status(self, orch):
         status = orch.status()
-        assert status["version"] == "2.2.0"
+        assert status["version"] == "2.3.0"
         assert status["layers"]["registered"] == 5
         assert "scheduler" in status
         assert "vectors" in status
