@@ -87,9 +87,11 @@ class MemoryStore:
                 );
 
                 -- Indexes for common queries
-                -- ⚡ Bolt: Replaced separate node_id and timestamp indexes with a single composite index
-                -- to optimize frequent querying and sorting of recent metrics per node in get_metrics()
+                -- ⚡ Bolt: Kept composite index for node-specific queries, but restored standalone
+                -- timestamp index to optimize get_metrics() when fetching all recent metrics
+                -- without a node_id filter. Eliminates O(N log N) Temp B-Tree sorts.
                 CREATE INDEX IF NOT EXISTS idx_metrics_node_ts ON metrics(node_id, timestamp DESC);
+                CREATE INDEX IF NOT EXISTS idx_metrics_ts ON metrics(timestamp DESC);
                 CREATE INDEX IF NOT EXISTS idx_meta_skill_ts ON meta(skill_id, timestamp);
                 CREATE INDEX IF NOT EXISTS idx_meta_ts ON meta(timestamp);
                 CREATE INDEX IF NOT EXISTS idx_lt_category_updated ON long_term(category, updated_at);
