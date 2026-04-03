@@ -33,3 +33,7 @@
 ## 2025-04-02 - [O(N) directory traversal optimization]
 **Learning:** When recursively scanning directories to find files, using `Path.rglob('*')` followed by a filter forces an O(N) traversal of all files, including those in ignored directories (like `node_modules` or `.venv`). This causes massive performance and memory bottlenecks on large projects.
 **Action:** Replaced `Path.rglob` with `os.walk` and pruned ignored directories in-place (`dirs[:] = [d for d in dirs if d not in skip_dirs]`). This drastically improves performance by avoiding traversal of massive ignored directories.
+
+## 2024-05-15 - [Database Optimization (SQLite Sorting) for Conversations]
+**Learning:** In `james/conversations.py`, the `list_conversations()` method queries the `conversations` table using an `ORDER BY updated_at DESC` clause. Without an index on `updated_at`, SQLite must perform a full table scan and an expensive in-memory sort.
+**Action:** Added a non-DESC index on `updated_at` to eliminate full table scans and memory allocations for this query. SQLite traverses ascending indices backward with equal efficiency, so explicitly specifying `DESC` in the index is unnecessary.
