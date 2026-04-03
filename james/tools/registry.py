@@ -768,7 +768,8 @@ def _tool_env_list(filter: str = None) -> dict:
     """List environment variables."""
     envs = dict(os.environ)
     if filter:
-        envs = {k: v for k, v in envs.items() if filter.lower() in k.lower()}
+        filter_lower = filter.lower()
+        envs = {k: v for k, v in envs.items() if filter_lower in k.lower()}
     return envs
 
 
@@ -791,7 +792,8 @@ def _tool_installed_packages(filter: str = None) -> list:
         return [{"error": r.stderr}]
     packages = json.loads(r.stdout)
     if filter:
-        packages = [p for p in packages if filter.lower() in p.get("name", "").lower()]
+        filter_lower = filter.lower()
+        packages = [p for p in packages if filter_lower in p.get("name", "").lower()]
     return packages
 
 
@@ -909,7 +911,8 @@ def _tool_windows_services(filter: str = None, status: str = "all") -> list:
     if isinstance(services, dict):
         services = [services]
     if filter:
-        services = [s for s in services if filter.lower() in s.get("DisplayName", "").lower() or filter.lower() in s.get("Name", "").lower()]
+        filter_lower = filter.lower()
+        services = [s for s in services if filter_lower in s.get("DisplayName", "").lower() or filter_lower in s.get("Name", "").lower()]
     if status != "all":
         status_map = {"running": 4, "stopped": 1}
         target = status_map.get(status.lower(), 0)

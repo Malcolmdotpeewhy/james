@@ -33,3 +33,7 @@
 ## 2025-04-02 - [O(N) directory traversal optimization]
 **Learning:** When recursively scanning directories to find files, using `Path.rglob('*')` followed by a filter forces an O(N) traversal of all files, including those in ignored directories (like `node_modules` or `.venv`). This causes massive performance and memory bottlenecks on large projects.
 **Action:** Replaced `Path.rglob` with `os.walk` and pruned ignored directories in-place (`dirs[:] = [d for d in dirs if d not in skip_dirs]`). This drastically improves performance by avoiding traversal of massive ignored directories.
+
+## 2025-04-02 - [Loop-Invariant String Operations in Comprehensions]
+**Learning:** Re-evaluating static string operations like `.lower()` repeatedly inside list or dict comprehensions (e.g., `[p for p in packages if filter.lower() in p.get("name", "").lower()]`) creates redundant O(N) allocation overhead.
+**Action:** Extract and hoist loop-invariant operations like string lowercasing outside of iteration loops and comprehensions to provide concrete, measurable execution improvements without sacrificing readability.
