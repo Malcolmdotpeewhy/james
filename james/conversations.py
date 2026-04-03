@@ -56,6 +56,12 @@ class ConversationStore:
                     message_count INTEGER DEFAULT 0
                 )
             """)
+            # ⚡ Bolt: Added index on updated_at to optimize list_conversations query
+            # preventing O(N) full table scan sorts.
+            conn.execute("""
+                CREATE INDEX IF NOT EXISTS idx_conversations_updated_at
+                ON conversations(updated_at DESC)
+            """)
             conn.execute("""
                 CREATE TABLE IF NOT EXISTS messages (
                     id INTEGER PRIMARY KEY AUTOINCREMENT,
