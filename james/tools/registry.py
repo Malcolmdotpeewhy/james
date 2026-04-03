@@ -1072,9 +1072,23 @@ def _tool_file_list(path: str = ".", pattern: str = "*", recursive: bool = False
         resolved = _safe_path(path)
         if not os.path.isdir(resolved):
             return {"error": f"Not a directory: {path}"}
-        glob_fn = Path(resolved).rglob if recursive else Path(resolved).glob
+        # ⚡ Bolt: Optimize recursive directory traversal
+        # Replaced Path.rglob with os.walk to prevent O(N) scanning of ignored directories
         entries = []
-        for p in sorted(glob_fn(pattern)):
+        skip_dirs = {".git", "__pycache__", "node_modules", "venv", ".venv", "env", "build", "dist", "target", ".idea", ".vscode"}
+
+        all_paths = []
+        if recursive:
+            for root, dirs, files in os.walk(resolved):
+                dirs[:] = [d for d in dirs if d not in skip_dirs]
+                for item in dirs + files:
+                    p = Path(root) / item
+                    if p.match(pattern):
+                        all_paths.append(p)
+        else:
+            all_paths = list(Path(resolved).glob(pattern))
+
+        for p in sorted(all_paths):
             if len(entries) >= 200:  # cap results
                 break
             try:
