@@ -90,8 +90,18 @@ class MemoryStore:
                 -- ⚡ Bolt: Replaced separate node_id and timestamp indexes with a single composite index
                 -- to optimize frequent querying and sorting of recent metrics per node in get_metrics()
                 CREATE INDEX IF NOT EXISTS idx_metrics_node_ts ON metrics(node_id, timestamp DESC);
-                CREATE INDEX IF NOT EXISTS idx_meta_skill ON meta(skill_id);
-                CREATE INDEX IF NOT EXISTS idx_lt_category ON long_term(category);
+
+                -- ⚡ Bolt: Drop previously redundant single-column indexes before replacing with composite
+                DROP INDEX IF EXISTS idx_meta_skill;
+                DROP INDEX IF EXISTS idx_lt_category;
+
+                -- ⚡ Bolt: Added composite and sorting indexes to prevent in-memory sorts during ORDER BY queries
+                CREATE INDEX IF NOT EXISTS idx_metrics_ts ON metrics(timestamp DESC);
+                CREATE INDEX IF NOT EXISTS idx_meta_skill_ts ON meta(skill_id, timestamp DESC);
+                CREATE INDEX IF NOT EXISTS idx_meta_ts ON meta(timestamp DESC);
+                CREATE INDEX IF NOT EXISTS idx_meta_improvement ON meta(improvement DESC);
+                CREATE INDEX IF NOT EXISTS idx_lt_category_updated ON long_term(category, updated_at DESC);
+                CREATE INDEX IF NOT EXISTS idx_lt_updated ON long_term(updated_at DESC);
             """)
 
     def _connect(self) -> sqlite3.Connection:
