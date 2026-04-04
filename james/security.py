@@ -45,26 +45,34 @@ class Role(Enum):
 
 # ── Destructive operation keywords ──────────────────────────────
 
-_DESTRUCTIVE_KEYWORDS = {
+_DESTRUCTIVE_KEYWORDS = tuple(k.lower() for k in [
     "rm -rf", "rmdir /s", "del /f", "format", "fdisk",
     "Remove-Item -Recurse -Force", "Clear-Content",
     "DROP TABLE", "DROP DATABASE", "TRUNCATE",
     "reg delete", "bcdedit", "diskpart",
-}
+])
 
-_SYSTEM_KEYWORDS = {
+_SYSTEM_KEYWORDS = tuple(k.lower() for k in [
     "net stop", "net start", "sc config", "sc delete",
     "Set-Service", "Stop-Service", "Restart-Service",
     "reg add", "regedit", "schtasks",
     "netsh", "wmic", "bcdedit",
     "Set-ExecutionPolicy", "Enable-WindowsOptionalFeature",
-}
+])
 
-_PRODUCTION_KEYWORDS = {
+_PRODUCTION_KEYWORDS = tuple(k.lower() for k in [
     "deploy", "publish", "release", "push --force",
     "git push origin main", "git push origin master",
     "docker push", "kubectl apply",
-}
+])
+
+_RESTRICTED_EVOLUTION_PATTERNS = tuple(k.lower() for k in [
+    "disable safety", "disable security", "disable audit",
+    "privilege escalation", "escalate privilege",
+    "kernel", "driver", "ring0", "ntoskrnl",
+    "bypass", "override security",
+])
+
 
 
 @dataclass
@@ -132,15 +140,15 @@ class SecurityPolicy:
         cmd_lower = command.lower()
 
         for kw in _DESTRUCTIVE_KEYWORDS:
-            if kw.lower() in cmd_lower:
+            if kw in cmd_lower:
                 return OpClass.DESTRUCTIVE
 
         for kw in _PRODUCTION_KEYWORDS:
-            if kw.lower() in cmd_lower:
+            if kw in cmd_lower:
                 return OpClass.PRODUCTION
 
         for kw in _SYSTEM_KEYWORDS:
-            if kw.lower() in cmd_lower:
+            if kw in cmd_lower:
                 return OpClass.SYSTEM_LEVEL
 
         return OpClass.SAFE
@@ -184,13 +192,7 @@ class SecurityPolicy:
         """
         action_lower = action.lower()
 
-        restricted_patterns = [
-            "disable safety", "disable security", "disable audit",
-            "privilege escalation", "escalate privilege",
-            "kernel", "driver", "ring0", "ntoskrnl",
-            "bypass", "override security",
-        ]
-        for pattern in restricted_patterns:
+        for pattern in _RESTRICTED_EVOLUTION_PATTERNS:
             if pattern in action_lower:
                 return EvolutionBoundary.RESTRICTED
 
