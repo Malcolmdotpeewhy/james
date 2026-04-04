@@ -51,3 +51,6 @@
 ## $(date +%Y-%m-%d) - [O(N) List Comprehension Optimization]
 **Learning:** Re-evaluating an invariant string method like `filter.lower()` inside a list or dictionary comprehension causes unnecessary string allocations and significant O(N) overhead in hot paths (e.g., `_tool_env_list`, `_tool_installed_packages`, `_tool_windows_services`).
 **Action:** When iterating over dictionaries or lists with a static filter string, always compute the transformed string (`filter_lower = filter.lower()`) outside of the loop/comprehension to eliminate redundant O(N) function calls and memory allocations.
+## $(date +%Y-%m-%d) - [O(N) Boolean Expression Optimization]
+**Learning:** In hot loops checking multiple conditions (e.g., `skill.name.lower()` or `skill.description.lower()`), placing string manipulations directly within the boolean expressions can cause redundant evaluations or prevent early short-circuiting benefits. However, replacing concise `any()` generators with multi-line `for` loops sacrifices too much code readability for minimal gains.
+**Action:** Always hoist static data operations (like `.lower()`) to standalone variables before boolean checks to eliminate redundant string allocations, while strictly preserving concise `any()` generator expressions for readability.
