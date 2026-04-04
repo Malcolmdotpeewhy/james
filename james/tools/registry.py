@@ -1012,8 +1012,10 @@ _BLOCKED_PATHS = [
 def _safe_path(path: str) -> str:
     """Canonicalize and validate a file path against blocked system dirs."""
     resolved = os.path.abspath(os.path.expanduser(path))
+    # ⚡ Bolt: Hoist resolved.lower() outside the loop to avoid O(N) string allocations
+    resolved_lower = resolved.lower()
     for blocked in _BLOCKED_PATHS:
-        if resolved.lower().startswith(blocked.lower()):
+        if resolved_lower.startswith(blocked.lower()):
             raise PermissionError(f"Access denied: {blocked} is a protected system path")
     return resolved
 

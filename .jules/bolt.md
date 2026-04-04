@@ -51,3 +51,7 @@
 ## $(date +%Y-%m-%d) - [O(N) List Comprehension Optimization]
 **Learning:** Re-evaluating an invariant string method like `filter.lower()` inside a list or dictionary comprehension causes unnecessary string allocations and significant O(N) overhead in hot paths (e.g., `_tool_env_list`, `_tool_installed_packages`, `_tool_windows_services`).
 **Action:** When iterating over dictionaries or lists with a static filter string, always compute the transformed string (`filter_lower = filter.lower()`) outside of the loop/comprehension to eliminate redundant O(N) function calls and memory allocations.
+
+## $(date +%Y-%m-%d) - [O(N) String method overhead in inner loops]
+**Learning:** Re-evaluating static string methods like `resolved.lower()` or `filter_domain.lower()` inside a `for` loop (e.g., in `_safe_path` or `web_extract_links`) causes unnecessary O(N) string allocations and performance overhead, particularly on high-iteration paths like scraping webpage links or checking blocked paths.
+**Action:** Always hoist loop-invariant string operations outside the loop body to eliminate redundant function calls and memory allocations.
