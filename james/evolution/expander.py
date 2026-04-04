@@ -448,9 +448,15 @@ Return ONLY the valid Python code, no markdown or text wrappers. Do not wrap cod
         for tool in available:
             name = tool["name"].lower()
             desc = tool.get("description", "").lower()
-            if (tool_name_lower in name or tool_name_lower in desc or
-                    any(word in name for word in tool_name_words)):
+            if tool_name_lower in name or tool_name_lower in desc:
                 similar.append(tool["name"])
+                continue
+
+            # ⚡ Bolt: Replaced any() generator expression with standard for-loop
+            for word in tool_name_words:
+                if word in name:
+                    similar.append(tool["name"])
+                    break
 
         # If we have similar tools, suggest them as an alternative but DO NOT block generation
         if similar:
