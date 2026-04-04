@@ -1029,13 +1029,22 @@ def _tool_file_read(path: str, max_lines: int = 200) -> dict:
         size = os.path.getsize(resolved)
         if size > 10_000_000:  # 10MB limit
             return {"error": f"File too large: {size / 1e6:.1f}MB (limit 10MB)"}
+        # ⚡ Bolt: Use bounded reading to avoid O(N) memory allocation and splitlines overhead
         with open(resolved, "r", encoding="utf-8", errors="replace") as f:
-            lines = f.readlines()
-        total = len(lines)
-        truncated = False
-        if max_lines and total > max_lines:
-            lines = lines[:max_lines]
-            truncated = True
+            lines = []
+            if max_lines:
+                for _ in range(max_lines):
+                    line = f.readline()
+                    if not line:
+                        break
+                    lines.append(line)
+            else:
+                lines = f.readlines()
+
+            # Count remaining lines efficiently without allocating them
+            total = len(lines) + sum(1 for _ in f)
+
+        truncated = max_lines is not None and total > max_lines
         return {
             "content": "".join(lines),
             "lines": total,

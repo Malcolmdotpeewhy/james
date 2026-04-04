@@ -51,3 +51,7 @@
 ## $(date +%Y-%m-%d) - [O(N) List Comprehension Optimization]
 **Learning:** Re-evaluating an invariant string method like `filter.lower()` inside a list or dictionary comprehension causes unnecessary string allocations and significant O(N) overhead in hot paths (e.g., `_tool_env_list`, `_tool_installed_packages`, `_tool_windows_services`).
 **Action:** When iterating over dictionaries or lists with a static filter string, always compute the transformed string (`filter_lower = filter.lower()`) outside of the loop/comprehension to eliminate redundant O(N) function calls and memory allocations.
+
+## $(date +%Y-%m-%d) - [O(N) Memory Allocation Optimization for File Reading]
+**Learning:** Using `readlines()` to read large files followed by list slicing (`lines[:max_lines]`) loads the entire file into memory at once, causing severe O(N) memory allocation and splitlines overhead.
+**Action:** For bounded file reading, always use a `for` loop executing `readline()` up to `max_lines`. To count remaining lines without allocating them, iterate the file object with `sum(1 for _ in f)`. This keeps memory complexity bounded to O(max_lines) while properly counting the total file size.
