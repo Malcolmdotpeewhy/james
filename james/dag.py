@@ -275,7 +275,7 @@ class ExecutionGraph:
         Uses estimated durations from metadata or defaults to 1.
         """
         order = self.topological_sort()
-        dist: dict[str, float] = {nid: 0.0 for nid in self.nodes}
+        dist: dict[str, float] = {nid: self.nodes[nid].metadata.get("estimated_duration", 1.0) for nid in self.nodes}
         parent: dict[str, Optional[str]] = {nid: None for nid in self.nodes}
 
         for nid in order:

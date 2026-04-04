@@ -189,6 +189,27 @@ class TestExecutionGraph:
         assert "a" in path
         assert "b" in path  # b is slower than c
 
+
+    def test_critical_path_correctness(self):
+        graph = ExecutionGraph(name="critical_path")
+        n1 = Node(id="a", name="A")
+        n1.metadata["estimated_duration"] = 5.0
+
+        n2 = Node(id="b", name="B")
+        n2.metadata["estimated_duration"] = 10.0
+
+        graph.add_node(n1)
+        graph.add_node(n2)
+
+        # With no dependencies, the critical path is just the node with the longest duration
+        path = graph.get_critical_path()
+        assert path == ["b"]
+
+        # If A depends on B, path is [B, A]
+        graph.add_dependency("a", "b")
+        path = graph.get_critical_path()
+        assert path == ["a", "b"] or path == ["b", "a"] # Topological sort may vary, but critical path is both
+
     def test_update_skipped_nodes(self):
         graph = ExecutionGraph(name="skipped_test")
         graph.add_node(Node(id="a", name="A"))
