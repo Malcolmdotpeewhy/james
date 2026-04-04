@@ -213,12 +213,16 @@ class SkillStore:
         query_lower = query.lower()
         results = []
         for skill in self._cache.values():
-            if (
-                query_lower in skill.name.lower()
-                or query_lower in skill.description.lower()
-                or any(query_lower in tag.lower() for tag in skill.tags)
-            ):
+            if query_lower in skill.name.lower() or query_lower in skill.description.lower():
                 results.append(skill)
+                continue
+
+            # ⚡ Bolt: Replaced any() generator expression with standard for-loop
+            # to eliminate frame allocation overhead in the search hot path.
+            for tag in skill.tags:
+                if query_lower in tag.lower():
+                    results.append(skill)
+                    break
         return sorted(results, key=lambda s: s.confidence_score, reverse=True)
 
     def find_by_method(self, method: str) -> list[Skill]:
