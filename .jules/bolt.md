@@ -59,3 +59,7 @@
 ## 2026-04-05 - [O(N) Generator Optimization in File Reading]
 **Learning:** Using a generator expression like sum(1 for _ in f) causes unnecessary frame allocations and generator iterations overhead, especially on files with a large number of lines.
 **Action:** Replace these generator expressions with standard accumulator for-loops (e.g. for _ in f: total += 1) to eliminate overhead and improve performance.
+
+## 2026-04-05 - [O(N) Redundant DOM Query Optimization]
+**Learning:** Calling `soup.find_all(...)` multiple times on the same DOM element to retrieve the exact same list of nodes forces BeautifulSoup to redundantly traverse and parse the DOM tree, causing an O(N) performance overhead. In `web_crawl` inside `james/tools/web.py`, `soup.find_all("a", href=True)` was being called twice per page visit.
+**Action:** Always cache the result of expensive operations like `soup.find_all` into a local variable (e.g., `links = soup.find_all("a", href=True)`) before iterating through it or evaluating its length to prevent redundant parsing and improve function execution speed.

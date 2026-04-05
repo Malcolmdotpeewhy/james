@@ -553,9 +553,12 @@ def web_crawl(start_url: str, max_pages: int = 10, same_domain: bool = True,
             text = soup.get_text(strip=True)
             page_data["word_count"] = len(text.split())
 
+            # ⚡ Bolt: Cache DOM query for links to prevent redundant O(N) traversals
             # Extract links for further crawling
+            links = soup.find_all("a", href=True)
+            page_data["links_found"] = len(links)
             if current_depth < depth:
-                for a in soup.find_all("a", href=True):
+                for a in links:
                     href = urljoin(current_url, a["href"])
                     p = urlparse(href)
                     # Skip non-HTTP, anchors, query strings
@@ -564,8 +567,6 @@ def web_crawl(start_url: str, max_pages: int = 10, same_domain: bool = True,
                     clean = f"{p.scheme}://{p.netloc}{p.path}"
                     if clean not in visited:
                         queue.append((clean, current_depth + 1))
-
-            page_data["links_found"] = len(soup.find_all("a", href=True))
 
         pages.append(page_data)
         logger.info(f"  Crawled: {current_url} ({len(pages)}/{max_pages})")
