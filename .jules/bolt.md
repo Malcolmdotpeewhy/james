@@ -59,3 +59,7 @@
 ## 2026-04-05 - [O(N) Generator Optimization in File Reading]
 **Learning:** Using a generator expression like sum(1 for _ in f) causes unnecessary frame allocations and generator iterations overhead, especially on files with a large number of lines.
 **Action:** Replace these generator expressions with standard accumulator for-loops (e.g. for _ in f: total += 1) to eliminate overhead and improve performance.
+
+## 2026-04-05 - [O(N) Overhead Elimination in HTML Parsing Loops]
+**Learning:** In HTML parsing functions (like `_tool_web_crawl`), calling `.lower()` on a loop-invariant filter string (e.g., `filter_domain.lower()`) inside a heavily executed `for` loop (like iterating over all `<a>` tags in a DOM) forces unnecessary string re-allocations on every single iteration.
+**Action:** Always hoist loop-invariant transformations (like `.lower()` or regex compilation) outside of the loop to eliminate O(N) execution overhead, improving performance on large documents without sacrificing readability.
