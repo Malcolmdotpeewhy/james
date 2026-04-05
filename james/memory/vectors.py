@@ -32,6 +32,16 @@ import numpy as np
 logger = logging.getLogger("james.memory.vectors")
 
 
+_STOP_WORDS = {
+    'a', 'an', 'the', 'is', 'it', 'in', 'on', 'at', 'to', 'for',
+    'of', 'and', 'or', 'but', 'not', 'this', 'that', 'with', 'from',
+    'by', 'as', 'be', 'was', 'were', 'been', 'are', 'am', 'has',
+    'had', 'have', 'do', 'does', 'did', 'will', 'would', 'could',
+    'should', 'may', 'might', 'can', 'i', 'my', 'me', 'we', 'you',
+}
+_TOKEN_PATTERN = re.compile(r'[a-z0-9]+')
+
+
 class VectorStore:
     """
     Lightweight vector store using TF-IDF + cosine similarity.
@@ -212,18 +222,12 @@ class VectorStore:
     @staticmethod
     def _tokenize(text: str) -> list[str]:
         """Tokenize text into lowercase words, removing punctuation."""
+        # ⚡ Bolt: Use precompiled regex and module-level stop_words to avoid O(1) allocation overhead on every tokenization
         text = text.lower()
         # Split on non-alphanumeric, keep meaningful tokens
-        tokens = re.findall(r'[a-z0-9]+', text)
+        tokens = _TOKEN_PATTERN.findall(text)
         # Remove very short tokens and stop words
-        stop_words = {
-            'a', 'an', 'the', 'is', 'it', 'in', 'on', 'at', 'to', 'for',
-            'of', 'and', 'or', 'but', 'not', 'this', 'that', 'with', 'from',
-            'by', 'as', 'be', 'was', 'were', 'been', 'are', 'am', 'has',
-            'had', 'have', 'do', 'does', 'did', 'will', 'would', 'could',
-            'should', 'may', 'might', 'can', 'i', 'my', 'me', 'we', 'you',
-        }
-        return [t for t in tokens if len(t) > 1 and t not in stop_words]
+        return [t for t in tokens if len(t) > 1 and t not in _STOP_WORDS]
 
     # ── Persistence ──────────────────────────────────────────────
 

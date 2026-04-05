@@ -4,17 +4,7 @@ import sys
 
 # Mock missing system constraints gracefully
 # noqa: E402
-class SafeNumpyMock(MagicMock):
-    def __gt__(self, other):
-        return True
-    def __lt__(self, other):
-        return False
-    def __bool__(self):
-        return True
-    def __array_ufunc__(self, *args, **kwargs):
-        return MagicMock()
 
-sys.modules['numpy'] = SafeNumpyMock()
 
 from james.orchestrator import Orchestrator  # noqa: E402
 from james.dag import ExecutionGraph, Node, NodeState  # noqa: E402
