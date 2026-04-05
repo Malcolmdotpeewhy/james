@@ -59,3 +59,7 @@
 ## 2026-04-05 - [O(N) Generator Optimization in File Reading]
 **Learning:** Using a generator expression like sum(1 for _ in f) causes unnecessary frame allocations and generator iterations overhead, especially on files with a large number of lines.
 **Action:** Replace these generator expressions with standard accumulator for-loops (e.g. for _ in f: total += 1) to eliminate overhead and improve performance.
+
+## 2024-04-05 - [O(N) Vector Search Optimization]
+**Learning:** Using `np.argsort` to find the top-K elements in an array of size N requires an O(N log N) full sort. This is highly inefficient for large vector stores when we only need a small number of top results (K << N).
+**Action:** Replace `np.argsort` with `np.argpartition(..., -top_k)[-top_k:]` followed by an `np.argsort` only on the top-K elements. This reduces the time complexity from O(N log N) to O(N + K log K), significantly accelerating semantic searches.

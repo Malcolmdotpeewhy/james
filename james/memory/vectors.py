@@ -120,7 +120,13 @@ class VectorStore:
 
         # Get top-k results above threshold
         results = []
-        top_indices = np.argsort(similarities)[::-1][:top_k]
+        # ⚡ Bolt: Use O(N) argpartition instead of O(N log N) argsort to find top-k elements
+        if len(similarities) > top_k:
+            top_k_indices = np.argpartition(similarities, -top_k)[-top_k:]
+            top_indices = top_k_indices[np.argsort(similarities[top_k_indices])[::-1]]
+        else:
+            top_indices = np.argsort(similarities)[::-1]
+
         for idx in top_indices:
             score = float(similarities[idx])
             if score >= threshold:
