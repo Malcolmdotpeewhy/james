@@ -1041,8 +1041,11 @@ def _tool_file_read(path: str, max_lines: int = 200) -> dict:
             else:
                 lines = f.readlines()
 
-            # Count remaining lines efficiently without allocating them
-            total = len(lines) + sum(1 for _ in f)
+            # ⚡ Bolt: Use explicit for loop instead of generator sum(1 for _ in f) to avoid
+            # generator allocation overhead and frame evaluation on every line
+            total = len(lines)
+            for _ in f:
+                total += 1
 
         truncated = max_lines is not None and total > max_lines
         return {

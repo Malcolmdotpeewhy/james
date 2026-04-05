@@ -34,11 +34,11 @@
 **Learning:** When recursively scanning directories to find files, using `Path.rglob('*')` followed by a filter forces an O(N) traversal of all files, including those in ignored directories (like `node_modules` or `.venv`). This causes massive performance and memory bottlenecks on large projects.
 **Action:** Replaced `Path.rglob` with `os.walk` and pruned ignored directories in-place (`dirs[:] = [d for d in dirs if d not in skip_dirs]`). This drastically improves performance by avoiding traversal of massive ignored directories.
 
-## $(date +%Y-%m-%d) - SQLite Sorting Optimization
+## 2026-04-05 - SQLite Sorting Optimization
 **Learning:** When querying an SQLite table with an `ORDER BY` clause (e.g., `ORDER BY updated_at DESC LIMIT ?`), relying on a full table scan causes expensive in-memory sorts (Temp B-Tree).
 **Action:** Always ensure an index exists on the sorting column (e.g., `CREATE INDEX idx_name ON table(updated_at DESC)`) to prevent full table scans and expensive in-memory sorts.
 
-## $(date +%Y-%m-%d) - [SQLite ORDER BY optimization with composite indexes]
+## 2026-04-05 - [SQLite ORDER BY optimization with composite indexes]
 **Learning:** Adding new composite indexes (`skill_id, timestamp`) allows SQLite to satisfy `ORDER BY` queries for items filtered by a foreign key without requiring a full table scan or expensive in-memory sorts (Temp B-Tree). For queries filtering by one column and sorting by another, a composite index is highly effective.
 **Action:** Always create composite indexes for foreign keys paired with sort keys (e.g., timestamps) to eliminate `O(N log N)` Temp B-Tree sorts.
 
@@ -48,10 +48,14 @@
 ## 2026-04-03 - [O(N) directory traversal optimization in _tool_zip_create]
 **Learning:** When using `Path.rglob("*")` inside zip archiving tools, the function performs an O(N) traversal of all files, including massively deep but generally ignored directories like `.git` and `.venv`. This causes severe performance degradation and potential memory issues on large repositories.
 **Action:** Replace `Path.rglob` with `os.walk` and use in-place list modification (`dirs[:] = [d for d in dirs if d not in skip_dirs]`) to prune definitively ignorable directories early. However, never prune environment-specific output directories like `node_modules`, `build`, or `dist` unless explicitly requested, as they are often required in archives. Safe defaults include `.git`, `__pycache__`, `.venv`, `venv`, and `.tox`.
-## $(date +%Y-%m-%d) - [O(N) List Comprehension Optimization]
+## 2026-04-05 - [O(N) List Comprehension Optimization]
 **Learning:** Re-evaluating an invariant string method like `filter.lower()` inside a list or dictionary comprehension causes unnecessary string allocations and significant O(N) overhead in hot paths (e.g., `_tool_env_list`, `_tool_installed_packages`, `_tool_windows_services`).
 **Action:** When iterating over dictionaries or lists with a static filter string, always compute the transformed string (`filter_lower = filter.lower()`) outside of the loop/comprehension to eliminate redundant O(N) function calls and memory allocations.
 
-## $(date +%Y-%m-%d) - [O(N) Memory Allocation Optimization for File Reading]
+## 2026-04-05 - [O(N) Memory Allocation Optimization for File Reading]
 **Learning:** Using `readlines()` to read large files followed by list slicing (`lines[:max_lines]`) loads the entire file into memory at once, causing severe O(N) memory allocation and splitlines overhead.
 **Action:** For bounded file reading, always use a `for` loop executing `readline()` up to `max_lines`. To count remaining lines without allocating them, iterate the file object with `sum(1 for _ in f)`. This keeps memory complexity bounded to O(max_lines) while properly counting the total file size.
+
+## 2026-04-05 - [O(N) Generator Optimization in File Reading]
+**Learning:** Using a generator expression like sum(1 for _ in f) causes unnecessary frame allocations and generator iterations overhead, especially on files with a large number of lines.
+**Action:** Replace these generator expressions with standard accumulator for-loops (e.g. for _ in f: total += 1) to eliminate overhead and improve performance.
