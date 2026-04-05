@@ -303,6 +303,9 @@ def web_extract_links(url: str, filter_domain: str = None) -> dict:
 
     soup = _get_soup(html)
     if soup:
+        # ⚡ Bolt: Hoist filter_domain.lower() out of the loop to avoid O(N) string allocations
+        filter_domain_lower = filter_domain.lower() if filter_domain else None
+
         for a in soup.find_all("a", href=True):
             href = urljoin(url, a["href"])
             link_text = a.get_text(strip=True)[:100]
@@ -316,7 +319,7 @@ def web_extract_links(url: str, filter_domain: str = None) -> dict:
             if parsed_href.netloc == base_domain:
                 internal.append(entry)
             else:
-                if filter_domain and filter_domain.lower() not in parsed_href.netloc.lower():
+                if filter_domain_lower and filter_domain_lower not in parsed_href.netloc.lower():
                     continue
                 external.append(entry)
     else:
