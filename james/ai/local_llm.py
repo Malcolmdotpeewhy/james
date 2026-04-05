@@ -26,6 +26,9 @@ from pathlib import Path
 from typing import Optional
 from urllib import request as urllib_request
 
+# ⚡ Bolt: Hoisted static uncertainty_markers list to module level to avoid redundant allocations
+UNCERTAINTY_MARKERS = ["don't know", "not sure", "unsure", "need to search", "need to look", "cannot find", "no information"]
+
 logger = logging.getLogger("james.ai.local")
 
 # ══════════════════════════════════════════════════════════════════
@@ -460,9 +463,7 @@ def decompose_task(user_input: str, context: Optional[dict] = None,
     # ── CoT self-verification ──────────────────────────────
     if reasoning_chain and result.get("type") == "chat":
         chain_lower = reasoning_chain.lower()
-        uncertainty_markers = ["don't know", "not sure", "unsure", "need to search",
-                               "need to look", "cannot find", "no information"]
-        if any(marker in chain_lower for marker in uncertainty_markers):
+        if any(marker in chain_lower for marker in UNCERTAINTY_MARKERS):
             result["_confidence"] = "low"
             logger.info("CoT self-check: reasoning suggests uncertainty but answer is direct")
 
