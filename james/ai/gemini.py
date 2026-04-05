@@ -21,6 +21,12 @@ from typing import Optional
 
 logger = logging.getLogger("james.ai")
 
+
+_UNCERTAINTY_MARKERS = (
+    "don't know", "not sure", "unsure", "need to search",
+    "need to look", "cannot find", "no information"
+)
+
 _client = None
 _model_name = "gemini-2.0-flash"
 
@@ -213,11 +219,13 @@ def decompose_task(user_input: str, context: Optional[dict] = None,
         # ── CoT self-verification ──────────────────────────
         if reasoning_chain and result.get("type") == "chat":
             chain_lower = reasoning_chain.lower()
-            uncertainty_markers = ["don't know", "not sure", "unsure", "need to search",
-                                   "need to look", "cannot find", "no information"]
-            if any(marker in chain_lower for marker in uncertainty_markers):
-                result["_confidence"] = "low"
-                logger.info("CoT self-check: reasoning suggests uncertainty")
+            # ⚡ Bolt: Hoist static markers to module-level tuple and replace any() generator
+            # with standard for-loop to avoid frame allocation overhead.
+            for marker in _UNCERTAINTY_MARKERS:
+                if marker in chain_lower:
+                    result["_confidence"] = "low"
+                    logger.info("CoT self-check: reasoning suggests uncertainty")
+                    break
 
         result["_ai_duration_ms"] = elapsed
         result["_model"] = _model_name
