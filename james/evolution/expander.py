@@ -19,7 +19,6 @@ Safety layers:
 
 from __future__ import annotations
 
-import importlib.util
 import json
 import logging
 import os
@@ -82,37 +81,66 @@ class ToolSandbox:
             with os.fdopen(fd, "w") as f:
                 f.write(code)
 
-            # Load as module
-            spec = importlib.util.spec_from_file_location("james_gen_tool", tmp_path)
-            if not spec or not spec.loader:
-                return {"success": False, "error": "Failed to create module spec"}
+            wrapper_code = f"""
+import sys
+import json
+import importlib.util
 
-            mod = importlib.util.module_from_spec(spec)
+try:
+    spec = importlib.util.spec_from_file_location("james_gen_tool", r"{tmp_path}")
+    if not spec or not spec.loader:
+        print(json.dumps({{"success": False, "error": "Failed to create module spec"}}))
+        sys.exit(1)
 
-            try:
-                spec.loader.exec_module(mod)
-            except Exception as e:
-                return {"success": False, "error": f"Module load error: {e}"}
+    mod = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(mod)
 
-            # Find the tool function
-            fn = getattr(mod, function_name, None)
-            if fn is None:
-                # Try to find any function starting with _tool_
-                for attr_name in dir(mod):
-                    if attr_name.startswith("_tool_"):
-                        fn = getattr(mod, attr_name)
-                        break
+    fn = getattr(mod, "{function_name}", None)
+    if fn is None:
+        for attr_name in dir(mod):
+            if attr_name.startswith("_tool_"):
+                fn = getattr(mod, attr_name)
+                break
 
-            if fn is None:
-                return {"success": False, "error": f"Function '{function_name}' not found in generated code"}
+    if fn is None:
+        print(json.dumps({{"success": False, "error": "Function '{function_name}' not found in generated code"}}))
+        sys.exit(1)
 
-            if not callable(fn):
-                return {"success": False, "error": f"'{function_name}' is not callable"}
+    if not callable(fn):
+        print(json.dumps({{"success": False, "error": "'{function_name}' is not callable"}}))
+        sys.exit(1)
 
+    kwargs = json.loads(sys.stdin.read())
+    result = fn(**kwargs)
+    print(json.dumps({{"success": True, "output": result}}))
+except Exception as e:
+    print(json.dumps({{"success": False, "error": f"Execution error: {{type(e).__name__}}: {{str(e)}}"}}))
+    sys.exit(1)
+"""
             # Execute with timeout (via subprocess for hard timeout)
             try:
-                result = fn(**test_kwargs)
-                return {"success": True, "output": result}
+                proc = subprocess.run(
+                    [sys.executable, "-c", wrapper_code],
+                    input=json.dumps(test_kwargs),
+                    capture_output=True,
+                    text=True,
+                    timeout=self.MAX_TIMEOUT
+                )
+
+                out_lines = [line for line in proc.stdout.strip().split('\n') if line]
+                if out_lines:
+                    try:
+                        return json.loads(out_lines[-1])
+                    except json.JSONDecodeError:
+                        pass
+
+                if proc.returncode != 0:
+                    err = proc.stderr.strip() or proc.stdout.strip()
+                    return {"success": False, "error": f"Execution error: {err}"}
+
+                return {"success": True, "output": proc.stdout}
+            except subprocess.TimeoutExpired:
+                return {"success": False, "error": f"Execution timeout ({self.MAX_TIMEOUT}s)"}
             except Exception as e:
                 return {"success": False, "error": f"Execution error: {type(e).__name__}: {e}"}
 
