@@ -1,17 +1,7 @@
 import unittest
 from unittest.mock import MagicMock
 import sys
-class SafeNumpyMock(MagicMock):
-    def __gt__(self, other):
-        return True
-    def __lt__(self, other):
-        return False
-    def __bool__(self):
-        return True
-    def __array_ufunc__(self, *args, **kwargs):
-        return MagicMock()
 
-sys.modules['numpy'] = SafeNumpyMock()
 
 from james.orchestrator import Orchestrator
 from james.dag import ExecutionGraph, Node, NodeState
